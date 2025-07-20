@@ -20,6 +20,7 @@ from Secciones.Gen_data import *
 from Secciones.visualización import *
 from Secciones.nautilus import nautilus_en_marcha
 from Secciones.prueba import nautilus_en_marcha_2
+from Secciones.Panel import PanelC
 # -----------------------------------------------------
 # CONFIGURACIÓN GENERAL
 # -----------------------------------------------------
@@ -66,7 +67,8 @@ st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
     "🚀 Nautilus",
-    "🚀 Nautilus en marcha"
+    "🚀 Nautilus en marcha",
+    "Panel de control"
       ])
 
 import json
@@ -96,7 +98,7 @@ if seccion == "🔄 Generación de datos":
 
 elif seccion == "🚀 Nautilus en marcha":
 
-    nautilus_en_marcha_2()
+    nautilus_en_marcha()
 
 
 # -----------------------------------------------------
@@ -108,4 +110,18 @@ elif seccion == "🚀 Nautilus en marcha":
 #     nautilus_en_marcha(resultado, subsistemas)
 
 elif seccion == "🚀 Nautilus":
-    nautilus_en_marcha()
+    import numpy as np
+    # 1. Inicializa la lista si no existe
+    if "health_index" not in st.session_state:
+        st.session_state["health_index"] = list(np.random.uniform(0.01, 3 * 0.1, 100))  # valores iniciales
+    nautilus_en_marcha_2(health_index=st.session_state["health_index"])
+
+
+elif seccion == "Panel de control":
+    import numpy as np
+    # 1. Inicializa la lista si no existe
+    if "health_index" not in st.session_state:
+        st.session_state["health_index"] = list(np.random.uniform(0.01, 3 * 0.1, 100))  # valores iniciales
+
+    # 3. Llama a la función de graficado con todos los datos acumulados
+    PanelC(health_index=st.session_state["health_index"])
