@@ -13,14 +13,15 @@ from sklearn.linear_model import LinearRegression
 
 
 
-def PanelC(health_index):
+def PanelC():
     st.header("🚢 Nautilus en marcha")
-
+    
     plt.style.use("seaborn-v0_8-whitegrid")
     sns.set_palette("colorblind")
 
     df_1 = st.session_state.get("datos_modelo_1")
     df_2 = st.session_state.get("datos_modelo_2")
+    df_3 = st.session_state.get("datos_modelo_3")
     resultado = st.session_state.get("resultado")
     subsistemas = st.session_state.get("subsistemas")
 
@@ -29,9 +30,18 @@ def PanelC(health_index):
         st.stop()
 
     st.sidebar.subheader("⚙️ Simulación")
-    modelo = st.sidebar.selectbox("Generación de datos", ["Datos sin anomalías", "Datos con anomalías"])
-    df = df_1 if modelo == "Datos sin anomalías" else df_2
+    modelo = st.sidebar.selectbox(
+        "🟦 Tipo de datos a visualizar",
+        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías", "🔵 Datos de operación "]
+    )
 
+    tipo_datos=modelo
+    if "🟢 Datos sin anomalías" in modelo:
+        df = df_1
+    elif "🔴 Datos con anomalías" in modelo:
+        df = df_2
+    else:
+        df = df_3
     if df is None or not isinstance(df, pd.DataFrame):
         st.warning(f"No se encontraron datos para {modelo}.")
         st.stop()
@@ -43,9 +53,25 @@ def PanelC(health_index):
         st.warning("No hay variables válidas para este subsistema.")
         st.stop()
 
-    var_sel = st.sidebar.multiselect("📌 Variable a simular", variables_disponibles, default=variables_disponibles)
-    iteraciones = st.sidebar.slider("Días de operación", 2, 20, 5)
+    st.sidebar.markdown("📌 Variables del subsistema:")
+    var_sel = []
+    for var in variables_disponibles:
+        if st.sidebar.checkbox(var, value=True):
+            var_sel.append(var)
+    iteraciones = st.sidebar.number_input("📅 Días de operación", min_value=2, max_value=60, value=7, step=1)
     velocidad = st.sidebar.slider("Velocidad de simulación", 0.01, 2.0, 0.5, 0.1)
+    with st.sidebar.expander("📆 Ventanas de proyección RUL (en días)"):
+        try:
+            ventana_1 = st.number_input("Ventana 1", min_value=1, value=7, step=1)
+            ventana_2 = st.number_input("Ventana 2", min_value=7, value=30, step=1)
+            ventana_3 = st.number_input("Ventana 3", min_value=60, value=60, step=1)
+            ventana_4 = st.number_input("Ventana 4", min_value=120, value=120, step=1)
+
+            # Juntar en lista ordenada y sin duplicados
+            ventanas = sorted(set([ventana_1, ventana_2, ventana_3, ventana_4]))
+        except Exception as e:
+            st.warning(f"❌ Error en las ventanas: {e}. Usando valores por defecto.")
+            ventanas = [7, 15, 30, 60]
     umbral = 3.0
 
     # Crear contenedores si no existen
@@ -97,6 +123,7 @@ def PanelC(health_index):
 
 
         # Health Index precargado
+        health_index= st.session_state["health_index"][subsistema_sel]
         np.random.seed(42)
         time_steps = 30
         contenedor_sim = st.session_state["contenedor_sim"]
@@ -116,7 +143,31 @@ def PanelC(health_index):
             muestra_2d = muestra.reshape(-1, 1)
             muestra_scaled = scaler.transform(muestra_2d)
 
+            
+            tema = st.get_option("theme.base")
+            fondo = "#FFFFFF00" if tema == "light" else "#B2ACAC00"
+            color_letra = "#000000FF" if tema == "light" else "white"
+
+            plt.rcParams.update({
+                "axes.facecolor": fondo,
+                "figure.facecolor": fondo,
+                "axes.labelcolor": color_letra,
+                "xtick.color": color_letra,
+                "ytick.color": color_letra,
+                "text.color": color_letra,
+                "axes.edgecolor": color_letra,
+                "savefig.facecolor": fondo,
+                "legend.labelcolor": color_letra,
+                "font.size": 12,
+                "axes.titlesize": 14,
+                "axes.labelsize": 13,
+                "xtick.labelsize": 11,
+                "ytick.labelsize": 11,
+                "legend.fontsize": 12,
+                "figure.titlesize": 16,
+            })
             fig_sim, ax_sim = plt.subplots(figsize=(10, 4))
+            fig_sim.patch.set_facecolor(fondo)
             for var in var_sel:
                 info = resultado.get(var, {})
             nombre = info.get("Nombre", var_sel)
@@ -158,7 +209,7 @@ def PanelC(health_index):
             # === Health Index Plot ===
             fig_hi, ax_hi = plt.subplots(figsize=(8, 3))
             x_vals = list(range(1, len(health_index) + 1))
-            ax_hi.scatter(x_vals, health_index, color="blue", marker='o', label="Health Index")
+            ax_hi.scatter(x_vals, health_index, color="blue", marker='o', label=f"Health Index: {error:.1f}")
             ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
             ax_hi.set_title("📉 Health Index", fontsize=12, fontweight="bold")
             ax_hi.set_xlabel("Día", fontsize=10)
@@ -169,7 +220,6 @@ def PanelC(health_index):
             contenedor_health.pyplot(fig_hi)
 
             # === RUL Prediction ===
-            ventanas = [7, 15, 30, 60]
             interceptos = []
             fig_rul, axs = plt.subplots(2, 2, figsize=(16, 10))
             axs = axs.flatten()
@@ -201,16 +251,29 @@ def PanelC(health_index):
                 ax = axs[i]
                 ax.scatter(dias_validos, max_maes, color='blue', s=60, label="Health Index")
                 ax.plot(x_pred, y_pred, color='red', label='Proyección lineal')
-                ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label='Threshold')
+                ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label='Umbral')
+
+                # etiquetas = {7: "semanal", 15: "quincenal", 30: "mensual", 60: "bimestral"}
+                # titulo = f"Ventana: {ventana} días ({etiquetas.get(ventana, '')})"
+                
+                titulo = f"Ventana: {ventana} días"
 
                 if x_interseccion and m > 0:
+                    faltan_dias = x_interseccion - len(health_index)
                     ax.scatter(x_interseccion, umbral, color='black', s=40, zorder=5)
-                    ax.text(x_interseccion + 1, umbral, f"{x_interseccion:.1f} días", fontsize=9,
-                            bbox=dict(facecolor='white', edgecolor='black'))
+
+                    if faltan_dias > 1:
+                        ax.text(
+                            x_interseccion + 1, umbral, f"Faltan {faltan_dias:.1f} días", fontsize=9,
+                            bbox=dict(facecolor=fondo, edgecolor=color_letra)
+                        )
+                    else:
+                        # 🔴 Punto rojo en el título
+                        titulo += " 🔴"
+
                     interceptos.append(x_interseccion)
 
-                etiquetas = {7: "semanal", 15: "quincenal", 30: "mensual", 60: "bimestral"}
-                ax.set_title(f"Ventana: {ventana} días ({etiquetas.get(ventana, '')})")
+                ax.set_title(titulo)
                 ax.set_xlabel("Día")
                 ax.set_ylabel("Health Index")
                 ax.grid(True)
@@ -225,13 +288,28 @@ def PanelC(health_index):
             st.session_state["ultima_fig_sim"] = fig_sim
             st.session_state["ultima_fig_hi"] = fig_hi
             st.session_state["ultima_fig_rul"] = fig_rul
-            st.session_state["health_index"] = health_index
+            st.session_state["health_index"][subsistema_sel] = health_index
             # Acceder al contenedor del mensaje RUL
             # Mostrar mensaje visualmente atractivo del RUL
 
             if interceptos:
                 promedio_rul = float(np.mean(interceptos))
-                st.session_state["ultimo_rul_mensaje"] = f"""<div style='
+                if promedio_rul>( len(health_index) + 1):
+                    st.session_state["ultimo_rul_mensaje"] = f"""<div style='
+                            background-color:#f0f2f6;
+                            padding: 10px 15px;
+                            border-left: 5px solid #6c63ff;
+                            border-radius: 6px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            color: #333;'>
+                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(promedio_rul - len(health_index)):.1f} días para superar el umbral permitido.
+                    </div>"""
+                    st.session_state["contenedor_rul_mensaje"].markdown(
+                        st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                    )
+                else:
+                    st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                         background-color:#f0f2f6;
                         padding: 10px 15px;
                         border-left: 5px solid #6c63ff;
@@ -239,11 +317,10 @@ def PanelC(health_index):
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado:</span> {promedio_rul:.2f} días para la intersección con el umbral permitido.
-                </div>"""
-                st.session_state["contenedor_rul_mensaje"].markdown(
-                    st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
-                )
-
+                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {promedio_rul:.0f} </span> Revisión urgente, se ha superado el límite.
+                    </div>"""
+                    st.session_state["contenedor_rul_mensaje"].markdown(
+                        st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                    )
         detener_placeholder.empty()
         st.session_state["escaneo_activo"] = False

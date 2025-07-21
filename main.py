@@ -49,6 +49,14 @@ if "resultado" not in st.session_state:
         st.warning("⚠️ No se encontró el archivo resultado.json")
         st.session_state.resultado = {}
 
+import numpy as np
+
+if "health_index" not in st.session_state:
+    st.session_state["health_index"] = {}
+
+for nombre_subsistema in subsistemas:
+    if nombre_subsistema not in st.session_state["health_index"]:
+        st.session_state["health_index"][nombre_subsistema] = list(np.random.uniform(0.01, 3 * 0.1, 120))
 
 
 # -----------------------------------------------------
@@ -67,8 +75,7 @@ st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
     "🚀 Nautilus",
-    "🚀 Nautilus en marcha",
-    "Panel de control"
+    "🚀 Nautilus en marcha"
       ])
 
 import json
@@ -111,17 +118,14 @@ elif seccion == "🚀 Nautilus en marcha":
 
 elif seccion == "🚀 Nautilus":
     import numpy as np
-    # 1. Inicializa la lista si no existe
-    if "health_index" not in st.session_state:
-        st.session_state["health_index"] = list(np.random.uniform(0.01, 3 * 0.1, 100))  # valores iniciales
-    nautilus_en_marcha_2(health_index=st.session_state["health_index"])
 
+    PanelC()
 
-elif seccion == "Panel de control":
-    import numpy as np
-    # 1. Inicializa la lista si no existe
-    if "health_index" not in st.session_state:
-        st.session_state["health_index"] = list(np.random.uniform(0.01, 3 * 0.1, 100))  # valores iniciales
+# elif seccion == "Panel de control":
+#     import numpy as np
+#     # 1. Inicializa la lista si no existe
+#     if "health_index" not in st.session_state:
+#         st.session_state["health_index"] = list(np.random.uniform(0.01, 3 * 0.1, 100))  # valores iniciales
 
-    # 3. Llama a la función de graficado con todos los datos acumulados
-    PanelC(health_index=st.session_state["health_index"])
+#     # 3. Llama a la función de graficado con todos los datos acumulados
+#     PanelC()

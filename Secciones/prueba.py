@@ -12,28 +12,39 @@ from matplotlib.ticker import MaxNLocator
 from sklearn.linear_model import LinearRegression
 import math
 
-def nautilus_en_marcha_2(health_index):
+def nautilus_en_marcha_2():
     st.header("🚢 Nautilus en marcha")
-
+     
     plt.style.use("seaborn-v0_8-whitegrid")
     sns.set_palette("colorblind")
 
     df_1 = st.session_state.get("datos_modelo_1")
     df_2 = st.session_state.get("datos_modelo_2")
+    df_3 = st.session_state.get("datos_modelo_3")  # ✅ Nuevo modelo
     resultado = st.session_state.get("resultado")
     subsistemas = st.session_state.get("subsistemas")
 
-    if not resultado or (df_1 is None and df_2 is None):
+    if not resultado or all(df is None for df in [df_1, df_2, df_3]):
         st.warning("⚠️ Asegúrate de haber generado datos y cargado el diccionario `resultado`.")
         st.stop()
 
     st.sidebar.subheader("⚙️ Simulación")
-    modelo = st.sidebar.selectbox("Generación de datos", ["Datos sin anomalías", "Datos con anomalías"])
-    df = df_1 if modelo == "Datos sin anomalías" else df_2
+    modelo = st.sidebar.selectbox(
+        "🟦 Tipo de datos a visualizar",
+        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías", "🔵 Datos de operación "]
+    )
+
+    if "sin anomalías" in modelo:
+        df = df_1
+    elif "anomalías" in modelo:
+        df = df_2
+    else:
+        df = df_3
 
     if df is None or not isinstance(df, pd.DataFrame):
         st.warning(f"No se encontraron datos para {modelo}.")
         st.stop()
+
 
     subsistema_sel = st.sidebar.selectbox("Subsistema", list(subsistemas.keys()))
     variables_disponibles = [v for v in subsistemas[subsistema_sel] if v in df.columns and v in resultado]
@@ -43,9 +54,9 @@ def nautilus_en_marcha_2(health_index):
     # === 2. Umbrales específicos por subsistema ===
     umbrales = {
         "Sistema de Refrigeración": 3.0,
-        "Sistema de Combustible": 2.5,
-        "Sistema de Lubricación": 2.8,
-        "Temperatura de Gases de Escape": 5
+        "Sistema de Combustible": 20,
+        "Sistema de Lubricación": 1,
+        "Temperatura de Gases de Escape": 3
     }
     umbral = float(umbrales[subsistema_sel])
     if not variables_disponibles:
@@ -53,7 +64,7 @@ def nautilus_en_marcha_2(health_index):
         st.stop()
 
 
-    st.sidebar.markdown("📌 Selecciona las variables a simular:")
+    st.sidebar.markdown("📌 Variables del subsistema:")
     var_sel = []
     for var in variables_disponibles:
         if st.sidebar.checkbox(var, value=True):
@@ -108,8 +119,8 @@ def nautilus_en_marcha_2(health_index):
     subsistemas_modelados = {
         "Sistema de Combustible": "combustible",
         "Temperatura de Gases de Escape": "gases",
-        "Sistema de Lubricación": "lubricante"
-        # "Sistema de Refrigeración": "refrigeración"
+        "Sistema de Lubricación": "lubricante",
+        "Sistema de Refrigeración": "refrigeracion"
         
     }
 
@@ -166,7 +177,7 @@ def nautilus_en_marcha_2(health_index):
         st.session_state.pop("ultima_fig_rul", None)
 
 
-
+        health_index=st.session_state["health_index"][subsistema_sel]
         # Crear columnas para colocar las variables del subsistema
         columnas = st.columns(2)
         contenedor_subsistema = columnas[0].container()  # solo 1 contenedor para todas sus variables
@@ -208,7 +219,29 @@ def nautilus_en_marcha_2(health_index):
                 fig_sim, axs = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows), sharex=False)
                 axs = axs.flatten()
                 tema = st.get_option("theme.base")
-                fondo = "#FFFFFF" if tema == "light" else "#FFFFFF"
+                fondo = "#FFFFFF00" if tema == "light" else "#B2ACAC00"
+                color_letra = "#000000FF" if tema == "light" else "white"
+
+                plt.rcParams.update({
+                    "axes.facecolor": fondo,
+                    "figure.facecolor": fondo,
+                    "axes.labelcolor": color_letra,
+                    "xtick.color": color_letra,
+                    "ytick.color": color_letra,
+                    "text.color": color_letra,
+                    "axes.edgecolor": color_letra,
+                    "savefig.facecolor": fondo,
+                    "legend.labelcolor": color_letra,
+                    # ✅ Tamaño de fuente general
+                    "font.size": 12,  # Fuente base
+                    "axes.titlesize": 14,  # Título del eje
+                    "axes.labelsize": 13,  # Etiquetas de ejes
+                    "xtick.labelsize": 11,  # Ticks del eje x
+                    "ytick.labelsize": 11,  # Ticks del eje y
+                    "legend.fontsize": 12,  # Leyenda
+                    "figure.titlesize": 16,  # Título general
+
+                })
                 fig_sim.patch.set_facecolor(fondo)
 
                 for ax, var in zip(axs, var_sel):
@@ -217,9 +250,9 @@ def nautilus_en_marcha_2(health_index):
                     nombre = info.get("Nombre", var)
                     unidad = info.get("Unidad", "")
 
+                    ax.set_title(nombre, fontsize=12, fontweight="bold")
                     ax.set_facecolor(fondo)
                     ax.plot(muestra, color="green", marker='o', label=nombre)
-                    ax.set_ylabel(f"{nombre} [{unidad}]", fontsize=10)
                     ax.grid(True, alpha=0.3)
                     ax.set_ylim([np.min(muestra) - 1, np.max(muestra) + 1])
 
@@ -234,6 +267,9 @@ def nautilus_en_marcha_2(health_index):
                                 label=f"Máximo ({info['Valor máximo']})")
 
                     ax.legend(fontsize=8, loc='upper right')
+                    # Eliminar ejes vacíos
+                for j in range(i + 1, len(axs)):
+                    fig_sim.delaxes(axs[j])
 
                 fig_sim.suptitle(f"🔧 Subsistema: {subsistema_sel} | 🗓 Día {len(health_index)+1}", fontsize=14, fontweight="bold")
                 contenedor_sim.pyplot(fig_sim)
@@ -242,7 +278,7 @@ def nautilus_en_marcha_2(health_index):
                 st.session_state["ultima_fig_sim"] = fig_sim
                 # st.session_state["ultima_fig_hi"] = fig_hi
                 # st.session_state["ultima_fig_rul"] = fig_rul
-                st.session_state["health_index"] = health_index
+                st.session_state["health_index"][subsistema_sel]= health_index
 
                 time.sleep(velocidad)
             sequence = np.expand_dims(scaled_vector, axis=0)  # [1, time_steps, n_features]
@@ -259,7 +295,7 @@ def nautilus_en_marcha_2(health_index):
             fig_hi, ax_hi = plt.subplots(figsize=(8, 4))
             ax_hi.plot(health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
             ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
-            ax_hi.set_title("📉 Health Index")
+            ax_hi.set_title(f"📉 Health Index - Subsistema: {subsistema_sel}")
             ax_hi.set_xlabel("Día")
             ax_hi.set_ylabel("Health Index")
             ax_hi.grid(True, alpha=0.3)
@@ -314,8 +350,10 @@ def nautilus_en_marcha_2(health_index):
                     ax.scatter(x_interseccion, umbral, color='black', s=40, zorder=5)
 
                     if faltan_dias > 1:
-                        ax.text(x_interseccion + 1, umbral, f"Faltan {faltan_dias:.1f} días", fontsize=9,
-                                bbox=dict(facecolor='white', edgecolor='black'))
+                        ax.text(
+                            x_interseccion + 1, umbral, f"Faltan {faltan_dias:.1f} días", fontsize=9,
+                            bbox=dict(facecolor=fondo, edgecolor=color_letra)
+                        )
                     else:
                         # 🔴 Punto rojo en el título
                         titulo += " 🔴"
@@ -335,7 +373,7 @@ def nautilus_en_marcha_2(health_index):
             st.session_state["ultima_fig_sim"] = fig_sim
             st.session_state["ultima_fig_hi"] = fig_hi
             st.session_state["ultima_fig_rul"] = fig_rul
-            st.session_state["health_index"] = health_index
+            st.session_state["health_index"][subsistema_sel] = health_index
             # === Mostrar mensaje RUL estimado si hay intersecciones válidas ===
             if interceptos:
                 promedio_rul = float(np.mean(interceptos))
@@ -370,7 +408,7 @@ def nautilus_en_marcha_2(health_index):
         # === Preparar secuencia para el modelo ===
         # secuencia = np.expand_dims(muestra_scaled, axis=0)
         # pred = modelo.predict(secuencia)
-        # error = np.mean(np.square(secuencia - pred), axis=(1, 2))[0]
+        # error = np.mean(np.square(secuencia - pred), axis=(1, 2))[0]c
         # health_index.append(error)
 
         # # === Health Index Plot ===
@@ -389,83 +427,4 @@ def nautilus_en_marcha_2(health_index):
 
         detener_placeholder.empty()
         st.session_state["escaneo_activo"] = False
-
-
-
-                # # === RUL Prediction ===
-                # ventanas = [7, 15, 30, 60]
-                # interceptos = []
-                # fig_rul, axs = plt.subplots(2, 2, figsize=(16, 10))
-                # axs = axs.flatten()
-                # dias_validos = list(range(1, len(health_index) + 1))
-                # max_maes = health_index
-
-                # for i, ventana in enumerate(ventanas):
-                #     if len(dias_validos) < ventana:
-                #         axs[i].set_visible(False)
-                #         continue
-
-                #     X_interp = np.array(dias_validos[-ventana:]).reshape(-1, 1)
-                #     y_interp = np.array(max_maes[-ventana:])
-
-                #     modelo_lin = LinearRegression()
-                #     modelo_lin.fit(X_interp, y_interp)
-                #     m = modelo_lin.coef_[0]
-                #     b = modelo_lin.intercept_
-                #     x_interseccion = None
-                #     if m != 0:
-                #         x_interseccion = (umbral - b) / m
-
-                #     x_max = dias_validos[-1] + 10
-                #     if x_interseccion:
-                #         x_max = max(x_interseccion, x_max)
-                #     x_pred = np.linspace(dias_validos[-ventana], x_max, 200)
-                #     y_pred = m * x_pred + b
-
-                #     ax = axs[i]
-                #     ax.scatter(dias_validos, max_maes, color='blue', s=60, label="Health Index")
-                #     ax.plot(x_pred, y_pred, color='red', label='Proyección lineal')
-                #     ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label='Threshold')
-
-                #     if x_interseccion and m > 0:
-                #         ax.scatter(x_interseccion, umbral, color='black', s=40, zorder=5)
-                #         ax.text(x_interseccion + 1, umbral, f"{x_interseccion:.1f} días", fontsize=9,
-                #                 bbox=dict(facecolor='white', edgecolor='black'))
-                #         interceptos.append(x_interseccion)
-
-                #     etiquetas = {7: "semanal", 15: "quincenal", 30: "mensual", 60: "bimestral"}
-                #     ax.set_title(f"Ventana: {ventana} días ({etiquetas.get(ventana, '')})")
-                #     ax.set_xlabel("Día")
-                #     ax.set_ylabel("Health Index")
-                #     ax.grid(True)
-                #     ax.legend()
-
-                # fig_rul.suptitle(f"Proyección de RUL tras día {len(health_index)}", fontsize=16, fontweight='bold', y=1.02)
-                # plt.tight_layout()
-                # contenedor_rul.pyplot(fig_rul)
-
-                # # Guardar última figura
-                # # Guardar última figura
-                # st.session_state["ultima_fig_sim"] = fig_sim
-                # st.session_state["ultima_fig_hi"] = fig_hi
-                # st.session_state["ultima_fig_rul"] = fig_rul
-                # st.session_state["health_index"] = health_index
-                # # Acceder al contenedor del mensaje RUL
-                # # Mostrar mensaje visualmente atractivo del RUL
-
-                # if interceptos:
-                #     promedio_rul = float(np.mean(interceptos))
-                #     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
-                #             background-color:#f0f2f6;
-                #             padding: 10px 15px;
-                #             border-left: 5px solid #6c63ff;
-                #             border-radius: 6px;
-                #             font-size: 16px;
-                #             font-weight: bold;
-                #             color: #333;'>
-                #         📌 <span style='color:#6c63ff;'>RUL estimado:</span> {promedio_rul:.2f} días para la intersección con el umbral permitido.
-                #     </div>"""
-                #     st.session_state["contenedor_rul_mensaje"].markdown(
-                #         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
-                #     )
 

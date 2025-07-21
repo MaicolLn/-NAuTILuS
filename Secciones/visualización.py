@@ -17,6 +17,7 @@ def visualizar_subsistemas():
     # Verificamos que haya datos generados
     df_1 = st.session_state.get("datos_modelo_1")
     df_2 = st.session_state.get("datos_modelo_2")
+    df_3 = st.session_state.get("datos_modelo_3")
 
     if df_1 is None and df_2 is None:
         st.info("Primero debes generar datos en la sección de generación.")
@@ -39,33 +40,44 @@ def visualizar_subsistemas():
         variables_disponibles = [v for v in subsistemas[subsistema_sel] if v in columnas_disponibles]
 
         # Selección de variables
-        seleccionadas = st.multiselect("📌 Variables a graficar", variables_disponibles, default=variables_disponibles)
+        st.markdown("📌 **Variables a graficar**")
+        seleccionadas = []
+
+        for var in variables_disponibles:
+            if st.checkbox(var, value=True, key=f"var_check_{var}"):
+                seleccionadas.append(var)
+
 
         # Número de muestras aleatorias a visualizar
         n_muestras=76
         # n_muestras = st.slider("🎯 Número de datos a graficar (aleatorios)", min_value=12, max_value=48, value=24, step=12)
 
         # Mostrar u ocultar cada modelo
-        mostrar_datos_reales = st.checkbox("🟣 Mostrar datos reales", value=True)
-        mostrar_modelo_1 = st.checkbox("🟢 Mostrar datos normales", value=False)
-        mostrar_modelo_2 = st.checkbox("🔴 Mostrar datos con anomalías", value=False)
-        
+        # --- VISUALIZACIÓN DE DATOS ---
+        st.markdown(" **Visualización de datos**")
 
+        mostrar_datos_reales = st.checkbox("🟣 Mostrar datos reales", value=True)
+        mostrar_modelo_1 = st.checkbox("🟢 Mostrar datos normales", value=True)
+        mostrar_modelo_2 = st.checkbox("🔴 Mostrar datos con anomalías", value=False)
+        mostrar_modelo_3 = st.checkbox("🔵 Mostrar datos de prueba", value=False)  # NUEVO checkbox azul
 
         # Botón para forzar recarga
         if st.button("🔄 Recargar muestra"):
             st.session_state["recargar_visualizacion"] = not st.session_state.get("recargar_visualizacion", False)
 
-    # --- VISUALIZACIÓN ---
-    if not seleccionadas:
-        st.warning("Selecciona al menos una variable para graficar.")
-        return
+        # --- VALIDACIÓN ---
+        if not seleccionadas:
+            st.warning("Selecciona al menos una variable para graficar.")
+            return
 
-    # Subset aleatorio de datos
-    df_1_muestra = df_1[seleccionadas].sample(n=n_muestras) if mostrar_modelo_1 and df_1 is not None else None
-    df_2_muestra = df_2[seleccionadas].sample(n=n_muestras) if mostrar_modelo_2 and df_2 is not None else None
+        # Subset aleatorio de datos
+        df_1_muestra = df_1[seleccionadas].sample(n=n_muestras) if mostrar_modelo_1 and df_1 is not None else None
+        df_2_muestra = df_2[seleccionadas].sample(n=n_muestras) if mostrar_modelo_2 and df_2 is not None else None
+        df_3_muestra = df_3[seleccionadas].sample(n=n_muestras) if mostrar_modelo_3 and df_3 is not None else None  # NUEVO
 
     st.caption(f"🎲 Mostrando {n_muestras} muestras aleatorias por variable.")
+
+    # Límites de cada variable
     limites = {
         "PT101": (0, 10),
         "PT401": (0, 7),
@@ -78,11 +90,12 @@ def visualizar_subsistemas():
         "PT271": (0, 8),
     }
 
-
+    # Gráfica
     graficar_modelos_comparados(
         resultado,
         df_1=df_1_muestra,
         df_2=df_2_muestra,
+        df_3=df_3_muestra,  # PASO NUEVO
         seleccionadas=seleccionadas,
         titulo=f"Visualización - {subsistema_sel}",
         mostrar_reales=mostrar_datos_reales,

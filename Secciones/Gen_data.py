@@ -17,14 +17,15 @@ def cargar_modelos():
 
     modelo_dir = os.path.join(os.getcwd(), "modelos")
 
+    # Carga de modelos
     modelo_1_path = os.path.join(modelo_dir, "VAE_Normal.pkl")
     modelo_2_path = os.path.join(modelo_dir, "VAE_Anomalías.pkl")
+    modelo_3_path = os.path.join(modelo_dir, "VAE_Operación.pkl")
 
     # Modelo 1: VAE_Normal
     if os.path.exists(modelo_1_path):
         try:
             st.session_state.modelo_1 = joblib.load(modelo_1_path)
-            # st.sidebar.success("✅ Modelo 1 (VAE_Normal) cargado correctamente.")
         except Exception as e:
             st.sidebar.error(f"❌ Error al cargar VAE_Normal.pkl: {e}")
     else:
@@ -34,14 +35,21 @@ def cargar_modelos():
     if os.path.exists(modelo_2_path):
         try:
             st.session_state.modelo_2 = joblib.load(modelo_2_path)
-            # st.sidebar.success("✅ Modelo 2 (VAE_Anomalías) cargado correctamente.")
         except Exception as e:
             st.sidebar.error(f"❌ Error al cargar VAE_Anomalías.pkl: {e}")
     else:
         st.sidebar.warning("⚠️ No se encontró VAE_Anomalías.pkl en /modelos")
 
+    # Modelo 3: VAE_Operación
+    if os.path.exists(modelo_3_path):
+        try:
+            st.session_state.modelo_3 = joblib.load(modelo_3_path)
+        except Exception as e:
+            st.sidebar.error(f"❌ Error al cargar VAE_Operación.pkl: {e}")
+    else:
+        st.sidebar.warning("⚠️ No se encontró VAE_Operación.pkl en /modelos")
+
     # Parámetros de generación
-    # st.sidebar.subheader("🎛️ Parámetros comunes")
     MIN_FILAS = 7 * 24 * 4 * 4  # 2688
 
     numero_de_datos = st.sidebar.number_input(
@@ -56,16 +64,21 @@ def cargar_modelos():
         if st.session_state.get("modelo_1") is not None:
             try:
                 st.session_state.datos_modelo_1 = st.session_state.modelo_1.sample(num_rows=numero_de_datos)
-                # st.sidebar.success("✅ Datos generados para Modelo 1.")
             except Exception as e:
                 st.sidebar.error(f"❌ Error al generar datos para Modelo 1: {e}")
 
         if st.session_state.get("modelo_2") is not None:
             try:
                 st.session_state.datos_modelo_2 = st.session_state.modelo_2.sample(num_rows=numero_de_datos)
-                # st.sidebar.success("✅ Datos generados para Modelo 2.")
             except Exception as e:
                 st.sidebar.error(f"❌ Error al generar datos para Modelo 2: {e}")
+
+        if st.session_state.get("modelo_3") is not None:
+            try:
+                st.session_state.datos_modelo_3 = st.session_state.modelo_3.sample(num_rows=numero_de_datos)
+            except Exception as e:
+                st.sidebar.error(f"❌ Error al generar datos para Modelo 3: {e}")
+
 
     # Vista previa y descarga
     visualizar_subsistemas()
