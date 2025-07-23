@@ -36,6 +36,54 @@ def calcular_health_index_subsistema(nombre_subsistema,subsistemas, df_base, mod
         return mae_day
     else:
         return None
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+from sklearn.linear_model import LinearRegression
+import numpy as np
+
+def calcular_intersecciones_promedio_por_variable(health_index_variables, ventanas, umbral):
+    """
+    Calcula el promedio de intersección (RUL estimado) por variable, usando múltiples ventanas.
+
+    Args:
+        health_index_variables (dict): Diccionario {variable: [valores HI en el tiempo]}
+        ventanas (list of int): Tamaños de ventana para ajustar la regresión.
+        umbral (float): Umbral con el que se compara el valor de salud.
+
+    Returns:
+        dict: {variable: promedio_días_intersección}
+    """
+    intersecciones_promedio = {}
+
+    for var, valores in health_index_variables.items():
+        dias_validos = list(range(1, len(valores) + 1))
+        y = np.array(valores)
+        intersecciones = []
+
+        for ventana in ventanas:
+            if len(dias_validos) < ventana:
+                continue
+
+            X_interp = np.array(dias_validos[-ventana:]).reshape(-1, 1)
+            y_interp = y[-ventana:]
+
+            modelo_lin = LinearRegression()
+            modelo_lin.fit(X_interp, y_interp)
+            m = modelo_lin.coef_[0]
+            b = modelo_lin.intercept_
+
+            if m > 0:
+                x_interseccion = (umbral - b) / m
+                dias_faltantes = x_interseccion - dias_validos[-1]
+
+                if dias_faltantes > 0:
+                    intersecciones.append(dias_faltantes)
+
+        if intersecciones:
+            intersecciones_promedio[var] = round(np.mean(intersecciones), 1)
+
+    return intersecciones_promedio
 
 
 def nautilus_en_marcha_2():
@@ -86,6 +134,7 @@ def nautilus_en_marcha_2():
         "Temperatura de Gases de Escape": 3.5
     }
     umbral = float(umbrales[subsistema_sel])
+    umbral= 18
     if not variables_disponibles:
         st.warning("No hay variables válidas para este subsistema.")
         st.stop()
@@ -194,26 +243,27 @@ def nautilus_en_marcha_2():
     modelos_uni = {}
     scalers_uni = {}
 
-    for sistema, variables in subsistemas.items():
-        modelos[sistema] = {}
-        scalers[sistema] = {}
+    # Inicializar solo la entrada del subsistema seleccionado
+    modelos_uni[subsistema_sel] = {}
+    scalers_uni[subsistema_sel] = {}
 
-        for variable in variables:
-            try:
-                nombre_archivo_modelo = f"modelo_lstm_vae_{variable}.h5"
-                nombre_archivo_scaler = f"scaler_lstm_vae_{variable}.pkl"
+    # Iterar solo sobre las variables del subsistema seleccionado
+    for variable in subsistemas[subsistema_sel]:
+        try:
+            nombre_archivo_modelo = f"modelo_lstm_{variable}.h5"
+            nombre_archivo_scaler = f"scaler_lstm_{variable}.pkl"
 
-                ruta_modelo = os.path.join(modelo_dir, nombre_archivo_modelo)
-                ruta_scaler = os.path.join(modelo_dir, nombre_archivo_scaler)
+            ruta_modelo = os.path.join(modelo_dir, nombre_archivo_modelo)
+            ruta_scaler = os.path.join(modelo_dir, nombre_archivo_scaler)
 
-                # Carga
-                modelos[sistema][variable] = load_model(ruta_modelo, compile=False)
-                scalers[sistema][variable] = joblib.load(ruta_scaler)
+            # Carga de modelo y scaler
+            modelos_uni[subsistema_sel][variable] = load_model(ruta_modelo, compile=False)
+            scalers_uni[subsistema_sel][variable] = joblib.load(ruta_scaler)
 
-                print(f"✅ Cargado modelo y scaler para {sistema} - {variable}")
+            print(f"✅ Cargado modelo y scaler para {subsistema_sel} - {variable}")
 
-            except Exception as e:
-                print(f"⚠️ Error cargando {sistema} - {variable}: {e}")
+        except Exception as e:
+            print(f"⚠️ Error cargando {subsistema_sel} - {variable}: {e}")
 
 
     # SIMULACIÓN
@@ -242,26 +292,76 @@ def nautilus_en_marcha_2():
         
         for dia in range(iteraciones):  # días de operación
             # Crear un diccionario con los vectores reshaped para cada variable
-            vectores = {}
 
             muestra_df = df[var_sel].sample(n=time_steps, random_state=None).reset_index(drop=True)
+            maes_por_variable = []
+            for varsel in var_sel:
 
-            vectores = {}
-            for var in variables_disponibles:
-                vectores[var] = muestra_df[var].values.reshape(-1, 1)
+                # Obtén el scaler correspondiente
+                scaler_var = scalers_uni[subsistema_sel][varsel]
 
-           
-            # Concatenar todos los vectores en una sola matriz para análisis multivariable
-            vector_multivariable = np.concatenate([vectores[var] for var in variables_disponibles], axis=1)
-            scaled_vector = scaler.transform(vector_multivariable)
-            reconstrucciones = []
-            errores_mse = []
+                # Muestra
+                muestra = muestra_df[varsel].values
+                
+                # Ajuste especial si aplica
+                if varsel == "PT101":
+                    muestra_esc = muestra * 100
+                else:
+                    muestra_esc = muestra
+                # Escalado
+                muestra_2d = muestra_esc.reshape(-1, 1)
+                muestra_scaled = scaler_var.transform(muestra_2d)
+
+                # Prepara secuencia para predicción
+                secuencia = np.expand_dims(muestra_scaled, axis=0)
+                x_pred =modelos_uni[subsistema_sel][varsel].predict(secuencia)
+
+                # Cálculo del MAE
+                mae_day = np.mean(np.square(secuencia - x_pred), axis=(1, 2))[0]
+                maes_por_variable.append(mae_day)
+                st.write(f"🟠 MAE día actual para {varsel}: {mae_day:.4f}")
+                # Guarda el error
+                st.session_state["health_index_variables"][subsistema_sel][varsel].append(mae_day)
+            intersecciones = calcular_intersecciones_promedio_por_variable(
+                            st.session_state["health_index_variables"][subsistema_sel], ventanas, umbral
+                        )
             
+            # Mostrar en Streamlit
+            st.write("### 🧮 Intersecciones promedio por variable:")
+            for var, dias in intersecciones.items():
+                st.write(f"🔧 {var}: {dias} días")
+
+            tema = st.get_option("theme.base")
+            fondo = "#FFFFFF00" if tema == "light" else "#B2ACAC00"
+            color_letra = "#000000FF" if tema == "light" else "white"
+
+            plt.rcParams.update({
+                "axes.facecolor": fondo,
+                "figure.facecolor": fondo,
+                "axes.labelcolor": color_letra,
+                "xtick.color": color_letra,
+                "ytick.color": color_letra,
+                "text.color": color_letra,
+                "axes.edgecolor": color_letra,
+                "savefig.facecolor": fondo,
+                "legend.labelcolor": color_letra,
+                "lines.linewidth": 2.5,
+                
+                # ✅ Tamaño de fuente general
+                "font.size": 16,  # Fuente base
+                "axes.titlesize": 16,  # Título del eje
+                "axes.labelsize": 20,  # Etiquetas de ejes
+                "xtick.labelsize": 13,  # Ticks del eje x
+                "ytick.labelsize": 13,  # Ticks del eje y
+                "legend.fontsize": 12,  # Leyenda
+                "figure.titlesize": 24,  # Título general
+            })     
 
             for i in range(1, time_steps + 1):
                 if not st.session_state.get("escaneo_activo", True):
                     break
 
+       
                 tema = st.get_option("theme.base")
                 fondo = "#FFFFFF00" if tema == "light" else "#B2ACAC00"
                 color_letra = "#000000FF" if tema == "light" else "white"
@@ -297,12 +397,26 @@ def nautilus_en_marcha_2():
                 for ax, var in zip(axs, var_sel):
                     muestra = muestra_df[var].values[:i]
                     info = resultado.get(var, {})
+                    interseccion_var = intersecciones.get(var)
                     nombre = info.get("Nombre", var)
-                    unidad = info.get("Unidad", "")
 
+                    unidad = info.get("Unidad", "")
+                    
                     ax.set_title(nombre, fontweight="bold")
                     ax.set_facecolor(fondo)
-                    ax.plot(muestra, color="green", marker='o', label=nombre)
+                    if interseccion_var is not None:
+
+                        dias_restantes = float(interseccion_var) - len(health_index)
+
+                        if dias_restantes < 1:
+                            nombre_legenda = f"{var} | ⚠️ RUL crítico"
+                        else:
+                            nombre_legenda = f"{var} | RUL ≈ {dias_restantes:.1f} días"
+                    else:
+                        nombre_legenda = f"{var} | RUL: --"
+
+                    ax.plot(muestra, color="green", marker='o', label=nombre_legenda)
+
                     ax.grid(True, alpha=0.3)
                     ax.set_ylim([np.min(muestra) - 1, np.max(muestra) + 1])
 
@@ -326,27 +440,28 @@ def nautilus_en_marcha_2():
 
                 # Guarda última figura en sesión
                 st.session_state["ultima_fig_sim"] = fig_sim
-                # st.session_state["ultima_fig_hi"] = fig_hi
-                # st.session_state["ultima_fig_rul"] = fig_rul
+                
+                
                 st.session_state["health_index"][subsistema_sel]= health_index
 
                 time.sleep(velocidad)
-            sequence = np.expand_dims(scaled_vector, axis=0)  # [1, time_steps, n_features]
+            
+            # Calcula el promedio de todas las intersecciones de las variables del subsistema
+            mae_day = np.nanmean([
+               maes_por_variable
+            ])
 
-            # === 4. Predicción ===
-            x_pred = modelo.predict(sequence, verbose=0)
+            # Guarda este promedio en la lista health_index
+            st.session_state["health_index"][subsistema_sel].append(mae_day)
+    
 
-            # === 5. Calcular el error absoluto máximo por día ===
-            mae_day = np.mean(np.abs(sequence - x_pred))
-            if tipo_datos == "🔴 Datos con anomalías":
-                sumaa= random.uniform(2, 5)
-                mae_day= mae_day+sumaa
 
-            health_index.append(mae_day)
             # === 6. Graficar el Health Index ===
             # ✅ Graficar índice de salud acumulado
             fig_hi, ax_hi = plt.subplots(figsize=(8, 4))
-            ax_hi.plot(health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
+            dias = list(range(1, len(health_index) + 1))
+            ax_hi.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
+
             ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
             ax_hi.set_title(f"📉 Health Index - Subsistema: {subsistema_sel}")
             ax_hi.set_xlabel("Día")
@@ -442,7 +557,7 @@ def nautilus_en_marcha_2():
                             st.session_state["health_index"][nombre_subsistema].append(nuevo_valor)
 
 
-
+            # RUL por variable (si existen intersecciones individuales)
             # === Mostrar mensaje RUL estimado si hay intersecciones válidas ===
             if interceptos:
                 promedio_rul = float(np.mean(interceptos))
@@ -474,6 +589,7 @@ def nautilus_en_marcha_2():
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
                     )
+
         detener_placeholder.empty()
         st.session_state["escaneo_activo"] = False
 

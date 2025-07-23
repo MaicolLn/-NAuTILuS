@@ -74,9 +74,9 @@ def visualizar_subsistemas():
         st.markdown(" **Visualización de datos**")
 
         mostrar_datos_reales = st.checkbox("🟣 Mostrar datos reales", value=True)
-        mostrar_modelo_1 = st.checkbox("🟢 Mostrar datos normales", value=True)
-        mostrar_modelo_2 = st.checkbox("🔴 Mostrar datos con anomalías", value=False)
-        mostrar_modelo_3 = st.checkbox("🔵 Mostrar datos de prueba", value=False)  # NUEVO checkbox azul
+        mostrar_modelo_1 = st.checkbox("🟢 Datos normales - VAE", value=True)
+        mostrar_modelo_2 = st.checkbox("🔴 Datos con anomalías - VAE", value=False)
+        mostrar_modelo_3 = st.checkbox("🔵 Datos de prueba", value=False)  # NUEVO checkbox azul
 
         # Botón para forzar recarga
         if st.button("🔄 Recargar muestra"):

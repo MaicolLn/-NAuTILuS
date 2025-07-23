@@ -322,7 +322,8 @@ def nautilus_en_marcha():
             # === 6. Graficar el Health Index ===
             # ✅ Graficar índice de salud acumulado
             fig_hi, ax_hi = plt.subplots(figsize=(8, 4))
-            ax_hi.plot(health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
+            dias = list(range(1, len(health_index) + 1))
+            ax_hi.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
             ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
             ax_hi.set_title(f"📉 Health Index - Subsistema: {subsistema_sel}")
             ax_hi.set_xlabel("Día")

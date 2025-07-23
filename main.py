@@ -58,6 +58,16 @@ for nombre_subsistema in subsistemas:
     if nombre_subsistema not in st.session_state["health_index"]:
         st.session_state["health_index"][nombre_subsistema] = list(np.random.uniform(0.01, 3 * 0.1, 120))
 
+if "health_index_variables" not in st.session_state:
+    st.session_state["health_index_variables"] = {}
+for nombre_subsistema, variables in subsistemas.items():
+    if nombre_subsistema not in st.session_state["health_index_variables"]:
+        st.session_state["health_index_variables"][nombre_subsistema] = {}
+
+    for var in variables:
+        if var not in st.session_state["health_index_variables"][nombre_subsistema]:
+            st.session_state["health_index_variables"][nombre_subsistema][var] = list(np.random.uniform(0.01, 0.3, 120))
+
 
 # -----------------------------------------------------
 # SESIÓN
@@ -74,9 +84,9 @@ if "datos_generados" not in st.session_state:
 st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
-    "🚀 Nautilus",
-    "🚀 Nautilus en marcha",
-    "Prueba"
+    "🚀 Nautilus univariable",
+    "🚀 Nautilus multivariable",
+    "🚀 Nautilus mixto"
       ])
 
 import json
@@ -104,7 +114,7 @@ if seccion == "🔄 Generación de datos":
 # -----------------------------------------------------
 
 
-elif seccion == "🚀 Nautilus en marcha":
+elif seccion == "🚀 Nautilus multivariable":
 
     nautilus_en_marcha()
 
@@ -117,12 +127,12 @@ elif seccion == "🚀 Nautilus en marcha":
 #     from Secciones.nautilus import nautilus_en_marcha
 #     nautilus_en_marcha(resultado, subsistemas)
 
-elif seccion == "🚀 Nautilus":
+elif seccion == "🚀 Nautilus univariable":
     import numpy as np
 
     PanelC()
 
-elif seccion == "Prueba":
+elif seccion == "🚀 Nautilus mixto":
     nautilus_en_marcha_2()
 #     import numpy as np
 #     # 1. Inicializa la lista si no existe

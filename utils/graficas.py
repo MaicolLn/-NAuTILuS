@@ -17,11 +17,11 @@ def graficar_modelos_comparados(
     color_1="green",
     color_2="red",
     color_3="blue",  # Nuevo color
-    etiqueta_1="Datos sin anomalías",
-    etiqueta_2="Datos con anomalías",
-    etiqueta_3="Datos simulados",  # Nueva etiqueta
+    etiqueta_1="Datos normales - VAE",
+    etiqueta_2="Datos con anomalías - VAE",
+    etiqueta_3="Datos de prueba",  # Nueva etiqueta
     color_real="purple",
-    etiqueta_real="Datos reales",
+    etiqueta_real="Datos orginales",
     mostrar_reales=True,
     factor_escala=1,
     limites=None

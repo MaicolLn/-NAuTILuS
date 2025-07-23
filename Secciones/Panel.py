@@ -139,6 +139,7 @@ def PanelC():
                 st.warning("No hay suficientes datos para la simulación.")
                 break
 
+
             muestra = df[var_sel].sample(n=time_steps).values * 100
             muestra_2d = muestra.reshape(-1, 1)
             muestra_scaled = scaler.transform(muestra_2d)
