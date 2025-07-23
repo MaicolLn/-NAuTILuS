@@ -191,6 +191,30 @@ def nautilus_en_marcha_2():
         print(f"⚠️ Subsistema no tiene modelo: {subsistema_sel}")
         st.warning("🔍 Este subsistema aún no tiene un modelo asociado.")
 
+    modelos_uni = {}
+    scalers_uni = {}
+
+    for sistema, variables in subsistemas.items():
+        modelos[sistema] = {}
+        scalers[sistema] = {}
+
+        for variable in variables:
+            try:
+                nombre_archivo_modelo = f"modelo_lstm_vae_{variable}.h5"
+                nombre_archivo_scaler = f"scaler_lstm_vae_{variable}.pkl"
+
+                ruta_modelo = os.path.join(modelo_dir, nombre_archivo_modelo)
+                ruta_scaler = os.path.join(modelo_dir, nombre_archivo_scaler)
+
+                # Carga
+                modelos[sistema][variable] = load_model(ruta_modelo, compile=False)
+                scalers[sistema][variable] = joblib.load(ruta_scaler)
+
+                print(f"✅ Cargado modelo y scaler para {sistema} - {variable}")
+
+            except Exception as e:
+                print(f"⚠️ Error cargando {sistema} - {variable}: {e}")
+
 
     # SIMULACIÓN
     if iniciar:
