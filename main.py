@@ -75,7 +75,8 @@ st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
     "🚀 Nautilus",
-    "🚀 Nautilus en marcha"
+    "🚀 Nautilus en marcha",
+    "Prueba"
       ])
 
 import json
@@ -121,7 +122,8 @@ elif seccion == "🚀 Nautilus":
 
     PanelC()
 
-# elif seccion == "Panel de control":
+elif seccion == "Prueba":
+    nautilus_en_marcha_2()
 #     import numpy as np
 #     # 1. Inicializa la lista si no existe
 #     if "health_index" not in st.session_state:

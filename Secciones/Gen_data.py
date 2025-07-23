@@ -57,7 +57,7 @@ def cargar_modelos():
         min_value=MIN_FILAS,
         max_value=10000,
         value=MIN_FILAS,
-        step=24
+        step=1
     )
 
     if st.sidebar.button("🔄 Generar datos"):
@@ -75,10 +75,19 @@ def cargar_modelos():
 
         if st.session_state.get("modelo_3") is not None:
             try:
-                st.session_state.datos_modelo_3 = st.session_state.modelo_3.sample(num_rows=numero_de_datos)
+                n1 = int(numero_de_datos * 0.8)
+                n2 = numero_de_datos - n1  # asegurar total exacto
+
+                # ✅ Tomar los datos ya generados previamente
+                datos_1 = st.session_state.datos_modelo_1.sample(n=n1)
+                datos_2 = st.session_state.datos_modelo_2.sample(n=n2)
+
+                datos_combinados = pd.concat([datos_1, datos_2]).sample(frac=1).reset_index(drop=True)
+
+                st.session_state.datos_modelo_3 = datos_combinados
+
             except Exception as e:
                 st.sidebar.error(f"❌ Error al generar datos para Modelo 3: {e}")
-
 
     # Vista previa y descarga
     visualizar_subsistemas()

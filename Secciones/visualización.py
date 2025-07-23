@@ -40,13 +40,30 @@ def visualizar_subsistemas():
         variables_disponibles = [v for v in subsistemas[subsistema_sel] if v in columnas_disponibles]
 
         # Selección de variables
-        st.markdown("📌 **Variables a graficar**")
-        seleccionadas = []
+        st.sidebar.markdown("📌 **Variables del subsistema:**")
+        seleccionadas= []
 
         for var in variables_disponibles:
-            if st.checkbox(var, value=True, key=f"var_check_{var}"):
-                seleccionadas.append(var)
+            nombre_largo = resultado[var].get("Nombre", var)
 
+            # Crear el texto con tooltip
+            label_html = f"""
+                <label title="{nombre_largo}" style="cursor: pointer;">
+                    {var}
+                </label>
+            """
+
+            # Usamos una columna para alinear checkbox sin texto, y el HTML al lado
+            col1, col2 = st.sidebar.columns([1, 4])
+            
+            with col1:
+                checked = st.checkbox("", value=True, key=var)
+            
+            with col2:
+                st.markdown(label_html, unsafe_allow_html=True)
+
+            if checked:
+                seleccionadas.append(var)
 
         # Número de muestras aleatorias a visualizar
         n_muestras=76

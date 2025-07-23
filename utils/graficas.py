@@ -50,15 +50,17 @@ def graficar_modelos_comparados(
         "legend.labelcolor": color_letra,
         "grid.color": color_grid,
         "grid.linestyle": "--",
-        "grid.linewidth": 0.5,
+        "grid.linewidth": 0.8,
+        "lines.linewidth": 2.5,
+        
         # ✅ Tamaño de fuente general
-        "font.size": 12,  # Fuente base
-        "axes.titlesize": 14,  # Título del eje
-        "axes.labelsize": 13,  # Etiquetas de ejes
-        "xtick.labelsize": 11,  # Ticks del eje x
-        "ytick.labelsize": 11,  # Ticks del eje y
-        "legend.fontsize": 12,  # Leyenda
-        "figure.titlesize": 16,  # Título general
+        "font.size": 16,  # Fuente base
+        "axes.titlesize": 20,  # Título del eje
+        "axes.labelsize": 20,  # Etiquetas de ejes
+        "xtick.labelsize": 18,  # Ticks del eje x
+        "ytick.labelsize": 18,  # Ticks del eje y
+        "legend.fontsize": 16,  # Leyenda
+        "figure.titlesize": 24,  # Título general
     })
 
     plt.style.use("seaborn-v0_8-whitegrid")
@@ -80,7 +82,7 @@ def graficar_modelos_comparados(
         st.warning("No hay variables válidas para graficar.")
         return
 
-    n_cols = 2
+    n_cols = 1
     n_rows = math.ceil(n_vars / n_cols)
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows), sharex=False)
     fig.patch.set_facecolor(fondo)
@@ -116,8 +118,8 @@ def graficar_modelos_comparados(
         if valores_3 is not None:
             ax.plot(valores_3, color=color_3, linestyle="-", alpha=0.8, label=etiqueta_3)
 
-        ax.set_title(nombre, fontsize=12, fontweight="bold", color=color_letra)
-        ax.set_ylabel(nombre, fontsize=10, color=color_letra)
+        ax.set_title(nombre, fontweight="bold", color=color_letra)
+
         ax.tick_params(axis='both', labelsize=9, colors=color_letra)
         ax.grid(True, alpha=0.4)
 
@@ -140,12 +142,12 @@ def graficar_modelos_comparados(
             ax.axhline(vmax, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
                        label=f'Máximo ({info["Valor máximo"]:.0f})')
 
-        ax.legend(fontsize=8, loc='upper right')
+        ax.legend( loc='upper right')
 
     # Eliminar ejes vacíos
     for j in range(i + 1, len(axs)):
         fig.delaxes(axs[j])
 
-    plt.suptitle(titulo, fontsize=16, fontweight='bold', color=color_letra)
+    plt.suptitle(titulo, fontweight='bold', color=color_letra)
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     st.pyplot(fig)

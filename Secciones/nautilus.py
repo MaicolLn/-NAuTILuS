@@ -101,9 +101,9 @@ def nautilus_en_marcha():
     with st.sidebar.expander("📆 Ventanas de proyección RUL (en días)"):
         try:
             ventana_1 = st.number_input("Ventana 1", min_value=1, value=7, step=1)
-            ventana_2 = st.number_input("Ventana 2", min_value=7, value=30, step=1)
-            ventana_3 = st.number_input("Ventana 3", min_value=60, value=60, step=1)
-            ventana_4 = st.number_input("Ventana 4", min_value=120, value=120, step=1)
+            ventana_2 = st.number_input("Ventana 2", min_value=1, value=30, step=1)
+            ventana_3 = st.number_input("Ventana 3", min_value=1, value=60, step=1)
+            ventana_4 = st.number_input("Ventana 4", min_value=1, value=120, step=1)
 
             # Juntar en lista ordenada y sin duplicados
             ventanas = sorted(set([ventana_1, ventana_2, ventana_3, ventana_4]))
@@ -252,17 +252,17 @@ def nautilus_en_marcha():
                     "axes.edgecolor": color_letra,
                     "savefig.facecolor": fondo,
                     "legend.labelcolor": color_letra,
+                    "lines.linewidth": 2.5,
+                    
                     # ✅ Tamaño de fuente general
-                    "font.size": 12,  # Fuente base
-                    "axes.titlesize": 14,  # Título del eje
-                    "axes.labelsize": 13,  # Etiquetas de ejes
-                    "xtick.labelsize": 11,  # Ticks del eje x
-                    "ytick.labelsize": 11,  # Ticks del eje y
+                    "font.size": 16,  # Fuente base
+                    "axes.titlesize": 16,  # Título del eje
+                    "axes.labelsize": 20,  # Etiquetas de ejes
+                    "xtick.labelsize": 13,  # Ticks del eje x
+                    "ytick.labelsize": 13,  # Ticks del eje y
                     "legend.fontsize": 12,  # Leyenda
-                    "figure.titlesize": 16,  # Título general
-
+                    "figure.titlesize": 24,  # Título general
                 })
-                
 
                 n_vars = len(var_sel)
                 n_cols = 2
@@ -276,7 +276,7 @@ def nautilus_en_marcha():
                     nombre = info.get("Nombre", var)
                     unidad = info.get("Unidad", "")
 
-                    ax.set_title(nombre, fontsize=12, fontweight="bold")
+                    ax.set_title(nombre, fontweight="bold")
                     ax.set_facecolor(fondo)
                     ax.plot(muestra, color="green", marker='o', label=nombre)
                     ax.grid(True, alpha=0.3)
@@ -292,8 +292,12 @@ def nautilus_en_marcha():
                         ax.axhline(info["Valor máximo"], color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
                                 label=f"Máximo ({info['Valor máximo']})")
 
-                    ax.legend(fontsize=8, loc='upper right')
-                fig_sim.suptitle(f"🔧 Subsistema: {subsistema_sel} | 🗓 Día {len(health_index)+1}", fontsize=14, fontweight="bold")
+                    ax.legend(loc='upper right')
+                fig_sim.suptitle(
+                    f"🔧 Subsistema: {subsistema_sel} | Día {len(health_index)+1}",
+                    fontweight="bold",
+                    y=1.4 # ⬆️ súbelo un poco (default es ~0.95)
+                )
                 contenedor_sim.pyplot(fig_sim)
 
                 # Guarda última figura en sesión
@@ -376,7 +380,7 @@ def nautilus_en_marcha():
 
                     if faltan_dias > 1:
                         ax.text(
-                            x_interseccion + 1, umbral, f"Faltan {faltan_dias:.1f} días", fontsize=9,
+                            x_interseccion + 1, umbral, f"Faltan {faltan_dias:.1f} días",
                             bbox=dict(facecolor=fondo, edgecolor=color_letra)
                         )
                     else:
@@ -391,7 +395,7 @@ def nautilus_en_marcha():
                 ax.grid(True)
                 ax.legend()
 
-            fig_rul.suptitle(f"🔮 Proyección de RUL tras día {len(health_index)}", fontsize=16, fontweight='bold', y=1.02)
+            fig_rul.suptitle(f"🔮 Proyección de RUL tras día {len(health_index)}", fontweight='bold', y=1.02)
             plt.tight_layout()
             contenedor_rul.pyplot(fig_rul)
             # Mostrar gráfico en contenedor
@@ -427,7 +431,7 @@ def nautilus_en_marcha():
                             font-size: 16px;
                             font-weight: bold;
                             color: #333;'>
-                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(promedio_rul - len(health_index)):.1f} días para superar el umbral permitido.
+                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(promedio_rul - len(health_index)):.1f} días para superar el health index permitido.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
@@ -441,31 +445,11 @@ def nautilus_en_marcha():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {promedio_rul:.0f} </span> Revisión urgente, se ha superado el límite.
+                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {promedio_rul:.0f} </span> Revisión urgente, se ha superado el health index límite.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
                     )
-        # === Preparar secuencia para el modelo ===
-        # secuencia = np.expand_dims(muestra_scaled, axis=0)
-        # pred = modelo.predict(secuencia)
-        # error = np.mean(np.square(secuencia - pred), axis=(1, 2))[0]c
-        # health_index.append(error)
-
-        # # === Health Index Plot ===
-        # fig_hi, ax_hi = plt.subplots(figsize=(8, 3))
-        # x_vals = list(range(1, len(health_index) + 1))
-        # ax_hi.scatter(x_vals, health_index, color="blue", marker='o', label="Health Index")
-        # ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
-        # ax_hi.set_title("📉 Health Index", fontsize=12, fontweight="bold")
-        # ax_hi.set_xlabel("Día", fontsize=10)
-        # ax_hi.set_ylabel("Health Index", fontsize=10)
-        # ax_hi.grid(True, alpha=0.3)
-        # ax_hi.legend(fontsize=8)
-        # ax_hi.xaxis.set_major_locator(MaxNLocator(integer=True))
-
-        # contenedor_health.pyplot(fig_hi)
-
         detener_placeholder.empty()
         st.session_state["escaneo_activo"] = False
 

@@ -158,13 +158,17 @@ def PanelC():
                 "axes.edgecolor": color_letra,
                 "savefig.facecolor": fondo,
                 "legend.labelcolor": color_letra,
-                "font.size": 12,
-                "axes.titlesize": 14,
-                "axes.labelsize": 13,
-                "xtick.labelsize": 11,
-                "ytick.labelsize": 11,
-                "legend.fontsize": 12,
-                "figure.titlesize": 16,
+                "lines.linewidth": 2.5,
+                    
+                # ✅ Tamaño de fuente general
+                "font.size": 16,  # Fuente base
+                "axes.titlesize": 20,  # Título del eje
+                "axes.labelsize": 20,  # Etiquetas de ejes
+                "xtick.labelsize": 18,  # Ticks del eje x
+                "ytick.labelsize": 18,  # Ticks del eje y
+                "legend.fontsize": 13,  # Leyenda
+                "figure.titlesize": 24,  # Título general
+
             })
             fig_sim, ax_sim = plt.subplots(figsize=(10, 4))
             fig_sim.patch.set_facecolor(fondo)
@@ -177,7 +181,7 @@ def PanelC():
                     break
                 ax_sim.clear()
                 ax_sim.plot(muestra[:i] / 100, color="green", marker='o', label=nombre)
-                ax_sim.set_title(f"🔁 Día {len(health_index) +1} - {nombre}", fontsize=12, fontweight="bold")
+                ax_sim.set_title(f"🔁 Día {len(health_index) +1} - {nombre}", fontweight="bold")
                 ax_sim.set_ylabel(f"{nombre} [{info.get('Unidad', '')}]", fontsize=10)
                 ax_sim.grid(True, alpha=0.3)
                 ax_sim.set_ylim([np.min(muestra)/100 - 1, np.max(muestra)/100 + 1])
@@ -197,7 +201,7 @@ def PanelC():
                         label=f"Máximo ({info['Valor máximo']})"
                     )
 
-                ax_sim.legend(fontsize=8, loc='upper right')
+                ax_sim.legend(loc='upper right')
                 contenedor_sim.pyplot(fig_sim)
                 time.sleep(velocidad)
 
@@ -303,7 +307,7 @@ def PanelC():
                             font-size: 16px;
                             font-weight: bold;
                             color: #333;'>
-                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(promedio_rul - len(health_index)):.1f} días para superar el umbral permitido.
+                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(promedio_rul - len(health_index)):.1f} días para superar el health index permitido.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
@@ -317,7 +321,7 @@ def PanelC():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {promedio_rul:.0f} </span> Revisión urgente, se ha superado el límite.
+                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {promedio_rul:.0f} </span> Revisión urgente, se ha superado el health index límite.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
