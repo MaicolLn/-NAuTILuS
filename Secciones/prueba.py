@@ -141,9 +141,28 @@ def nautilus_en_marcha_2():
 
 
     st.sidebar.markdown("📌 Variables del subsistema:")
-    var_sel = []
+    var_sel= []
+
     for var in variables_disponibles:
-        if st.sidebar.checkbox(var, value=True):
+        nombre_largo = resultado[var].get("Nombre", var)
+
+        # Crear el texto con tooltip
+        label_html = f"""
+            <label title="{nombre_largo}" style="cursor: pointer;">
+                {var}
+            </label>
+        """
+
+        # Usamos una columna para alinear checkbox sin texto, y el HTML al lado
+        col1, col2 = st.sidebar.columns([1, 4])
+        
+        with col1:
+            checked = st.checkbox("", value=True, key=var)
+        
+        with col2:
+            st.markdown(label_html, unsafe_allow_html=True)
+
+        if checked:
             var_sel.append(var)
     iteraciones = st.sidebar.number_input("📅 Días de operación", min_value=2, max_value=60, value=7, step=1)
     velocidad = st.sidebar.slider("Velocidad de simulación", 0.01, 2.0, 0.5, 0.1)
@@ -319,17 +338,14 @@ def nautilus_en_marcha_2():
                 # Cálculo del MAE
                 mae_day = np.mean(np.square(secuencia - x_pred), axis=(1, 2))[0]
                 maes_por_variable.append(mae_day)
-                st.write(f"🟠 MAE día actual para {varsel}: {mae_day:.4f}")
+                
                 # Guarda el error
                 st.session_state["health_index_variables"][subsistema_sel][varsel].append(mae_day)
             intersecciones = calcular_intersecciones_promedio_por_variable(
                             st.session_state["health_index_variables"][subsistema_sel], ventanas, umbral
                         )
             
-            # Mostrar en Streamlit
-            st.write("### 🧮 Intersecciones promedio por variable:")
-            for var, dias in intersecciones.items():
-                st.write(f"🔧 {var}: {dias} días")
+
 
             tema = st.get_option("theme.base")
             fondo = "#FFFFFF00" if tema == "light" else "#B2ACAC00"

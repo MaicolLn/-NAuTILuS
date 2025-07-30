@@ -137,10 +137,10 @@ def graficar_modelos_comparados(
             vnom = info["Valor nominal"] / factor_escala
             ax.axhline(vnom, color='yellow', linestyle='--', linewidth=1.2, alpha=0.7,
                        label=f'Nominal ({info["Valor nominal"]:.0f})')
-        if info.get("Valor máximo") is not None:
-            vmax = info["Valor máximo"] / factor_escala
-            ax.axhline(vmax, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
-                       label=f'Máximo ({info["Valor máximo"]:.0f})')
+        # if info.get("Valor máximo") is not None:
+        #     vmax = info["Valor máximo"] / factor_escala
+        #     ax.axhline(vmax, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
+        #                label=f'Máximo ({info["Valor máximo"]:.0f})')
 
         ax.legend( loc='upper right')
 

@@ -73,10 +73,13 @@ def visualizar_subsistemas():
         # --- VISUALIZACIÓN DE DATOS ---
         st.markdown(" **Visualización de datos**")
 
-        mostrar_datos_reales = st.checkbox("🟣 Mostrar datos reales", value=True)
+        mostrar_datos_reales = st.checkbox("🟣 Datos originales", value=True)
         mostrar_modelo_1 = st.checkbox("🟢 Datos normales - VAE", value=True)
         mostrar_modelo_2 = st.checkbox("🔴 Datos con anomalías - VAE", value=False)
-        mostrar_modelo_3 = st.checkbox("🔵 Datos de prueba", value=False)  # NUEVO checkbox azul
+        if False:
+            mostrar_modelo_3 = st.checkbox("🔵 Datos de prueba", value=False)
+
+
 
         # Botón para forzar recarga
         if st.button("🔄 Recargar muestra"):
@@ -90,7 +93,7 @@ def visualizar_subsistemas():
         # Subset aleatorio de datos
         df_1_muestra = df_1[seleccionadas].sample(n=n_muestras) if mostrar_modelo_1 and df_1 is not None else None
         df_2_muestra = df_2[seleccionadas].sample(n=n_muestras) if mostrar_modelo_2 and df_2 is not None else None
-        df_3_muestra = df_3[seleccionadas].sample(n=n_muestras) if mostrar_modelo_3 and df_3 is not None else None  # NUEVO
+        # df_3_muestra = df_3[seleccionadas].sample(n=n_muestras) if mostrar_modelo_3 and df_3 is not None else None  # NUEVO
 
     st.caption(f"🎲 Mostrando {n_muestras} muestras aleatorias por variable.")
 
@@ -112,7 +115,8 @@ def visualizar_subsistemas():
         resultado,
         df_1=df_1_muestra,
         df_2=df_2_muestra,
-        df_3=df_3_muestra,  # PASO NUEVO
+        df_3=None,  # Nuevo parámetro
+        # df_3=df_3_muestra,  # PASO NUEVO
         seleccionadas=seleccionadas,
         titulo=f"Visualización - {subsistema_sel}",
         mostrar_reales=mostrar_datos_reales,

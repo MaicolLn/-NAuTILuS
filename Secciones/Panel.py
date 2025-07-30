@@ -54,9 +54,28 @@ def PanelC():
         st.stop()
 
     st.sidebar.markdown("📌 Variables del subsistema:")
-    var_sel = []
+    var_sel= []
+
     for var in variables_disponibles:
-        if st.sidebar.checkbox(var, value=True):
+        nombre_largo = resultado[var].get("Nombre", var)
+
+        # Crear el texto con tooltip
+        label_html = f"""
+            <label title="{nombre_largo}" style="cursor: pointer;">
+                {var}
+            </label>
+        """
+
+        # Usamos una columna para alinear checkbox sin texto, y el HTML al lado
+        col1, col2 = st.sidebar.columns([1, 4])
+        
+        with col1:
+            checked = st.checkbox("", value=True, key=var)
+        
+        with col2:
+            st.markdown(label_html, unsafe_allow_html=True)
+
+        if checked:
             var_sel.append(var)
     iteraciones = st.sidebar.number_input("📅 Días de operación", min_value=2, max_value=60, value=7, step=1)
     velocidad = st.sidebar.slider("Velocidad de simulación", 0.01, 2.0, 0.5, 0.1)

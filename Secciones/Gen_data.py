@@ -21,6 +21,8 @@ def cargar_modelos():
     modelo_1_path = os.path.join(modelo_dir, "VAE_Normal.pkl")
     modelo_2_path = os.path.join(modelo_dir, "VAE_Anomalías.pkl")
     modelo_3_path = os.path.join(modelo_dir, "VAE_Operación.pkl")
+    df_total_anomalous_baye = pd.read_csv(os.path.join(modelo_dir, "df_total_anomalous_baye.csv"))
+
 
     # Modelo 1: VAE_Normal
     if os.path.exists(modelo_1_path):
@@ -52,42 +54,56 @@ def cargar_modelos():
     # Parámetros de generación
     MIN_FILAS = 7 * 24 * 4 * 4  # 2688
 
-    numero_de_datos = st.sidebar.number_input(
-        "Mediciones a generar",
-        min_value=MIN_FILAS,
-        max_value=10000,
-        value=MIN_FILAS,
-        step=1
-    )
+    numero_de_datos = 4100
 
-    if st.sidebar.button("🔄 Generar datos"):
-        if st.session_state.get("modelo_1") is not None:
-            try:
-                st.session_state.datos_modelo_1 = st.session_state.modelo_1.sample(num_rows=numero_de_datos)
-            except Exception as e:
-                st.sidebar.error(f"❌ Error al generar datos para Modelo 1: {e}")
 
-        if st.session_state.get("modelo_2") is not None:
-            try:
-                st.session_state.datos_modelo_2 = st.session_state.modelo_2.sample(num_rows=numero_de_datos)
-            except Exception as e:
-                st.sidebar.error(f"❌ Error al generar datos para Modelo 2: {e}")
+    if st.session_state.get("modelo_1") is not None:
+        try:
+            st.session_state.datos_modelo_1 = st.session_state.modelo_1.sample(num_rows=numero_de_datos)
+        except Exception as e:
+            st.sidebar.error(f"❌ Error al generar datos para Modelo 1: {e}")
 
-        if st.session_state.get("modelo_3") is not None:
-            try:
-                n1 = int(numero_de_datos * 0.8)
-                n2 = numero_de_datos - n1  # asegurar total exacto
+    if st.session_state.get("modelo_2") is not None:
+        try:
+            st.session_state.datos_modelo_2 = st.session_state.modelo_2.sample(num_rows=numero_de_datos)
+            if "XX012" in st.session_state.datos_modelo_2.columns:
+                st.session_state.datos_modelo_2["XX012"] *= -1
+        except Exception as e:
+            st.sidebar.error(f"❌ Error al generar datos para Modelo 2: {e}")
 
-                # ✅ Tomar los datos ya generados previamente
-                datos_1 = st.session_state.datos_modelo_1.sample(n=n1)
-                datos_2 = st.session_state.datos_modelo_2.sample(n=n2)
+    if st.session_state.get("modelo_3") is not None:
+        try:
+            n1 = int(numero_de_datos * 0.8)
+            n2 = numero_de_datos - n1  # asegurar total exacto
 
-                datos_combinados = pd.concat([datos_1, datos_2]).sample(frac=1).reset_index(drop=True)
+            # ✅ Tomar los datos ya generados previamente
+            datos_1 = st.session_state.datos_modelo_1.sample(n=n1)
+            datos_2 = st.session_state.datos_modelo_2.sample(n=n2)
 
-                st.session_state.datos_modelo_3 = datos_combinados
+            datos_combinados = pd.concat([datos_1, datos_2]).sample(frac=1).reset_index(drop=True)
 
-            except Exception as e:
-                st.sidebar.error(f"❌ Error al generar datos para Modelo 3: {e}")
+            st.session_state.datos_modelo_3 = datos_combinados
+
+        except Exception as e:
+            st.sidebar.error(f"❌ Error al generar datos para Modelo 3: {e}")
+        # Botón para forzar recarga
+        # Reemplazar columnas específicas en datos_modelo_2 por valores del dataframe externo
+    columnas_reemplazo = [
+        "TE101", "TE201", "TE202", "TE272", "RPM", "TE511", "TE517", "TE5011A","TE600 - Carga"
+    ]
+
+    try:
+        # Asegurar que df_total_anomalous_baye tiene suficientes filas
+        if df_total_anomalous_baye.shape[0] >= st.session_state.datos_modelo_2.shape[0]:
+            reemplazo = df_total_anomalous_baye[columnas_reemplazo].sample(
+                n=st.session_state.datos_modelo_2.shape[0]
+            ).reset_index(drop=True)
+
+            st.session_state.datos_modelo_2.loc[:, columnas_reemplazo] = reemplazo.values
+        else:
+            st.sidebar.warning("⚠️ No hay suficientes datos en df_total_anomalous_baye para reemplazo.")
+    except Exception as e:
+        st.sidebar.error(f"❌ Error al reemplazar columnas en Modelo 2: {e}")
 
     # Vista previa y descarga
     visualizar_subsistemas()

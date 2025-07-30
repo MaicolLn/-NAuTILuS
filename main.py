@@ -21,6 +21,7 @@ from Secciones.visualización import *
 from Secciones.nautilus import nautilus_en_marcha
 from Secciones.prueba import nautilus_en_marcha_2
 from Secciones.Panel import PanelC
+from Secciones.deteccion_anom import detec_A
 # -----------------------------------------------------
 # CONFIGURACIÓN GENERAL
 # -----------------------------------------------------
@@ -54,19 +55,24 @@ import numpy as np
 if "health_index" not in st.session_state:
     st.session_state["health_index"] = {}
 
-for nombre_subsistema in subsistemas:
+for nombre_subsistema, variables in subsistemas.items():
     if nombre_subsistema not in st.session_state["health_index"]:
-        st.session_state["health_index"][nombre_subsistema] = list(np.random.uniform(0.01, 3 * 0.1, 120))
+        alet = list(np.random.uniform(0.01, 0.3, 120))
+        divisor = len(variables) if len(variables) > 0 else 1  # Evita división por cero
+        alet_dividido = [x / divisor for x in alet]
+        st.session_state["health_index"][nombre_subsistema] = alet
 
 if "health_index_variables" not in st.session_state:
     st.session_state["health_index_variables"] = {}
+
 for nombre_subsistema, variables in subsistemas.items():
     if nombre_subsistema not in st.session_state["health_index_variables"]:
         st.session_state["health_index_variables"][nombre_subsistema] = {}
 
     for var in variables:
         if var not in st.session_state["health_index_variables"][nombre_subsistema]:
-            st.session_state["health_index_variables"][nombre_subsistema][var] = list(np.random.uniform(0.01, 0.3, 120))
+            st.session_state["health_index_variables"][nombre_subsistema][var] =  alet_dividido
+
 
 
 # -----------------------------------------------------
@@ -84,10 +90,10 @@ if "datos_generados" not in st.session_state:
 st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
-    "🚀 Nautilus univariable",
-    "🚀 Nautilus multivariable",
-    "🚀 Nautilus mixto"
-      ])
+    "📉Detección de anomalías",
+    "🚀Health index & RUL"
+])
+
 
 import json
 
@@ -114,7 +120,7 @@ if seccion == "🔄 Generación de datos":
 # -----------------------------------------------------
 
 
-elif seccion == "🚀 Nautilus multivariable":
+elif seccion == "🚀Health index & RUL":
 
     nautilus_en_marcha()
 
@@ -141,3 +147,7 @@ elif seccion == "🚀 Nautilus mixto":
 
 #     # 3. Llama a la función de graficado con todos los datos acumulados
 #     PanelC()
+elif seccion == "📉Detección de anomalías":
+    import numpy as np
+    detec_A()
+   

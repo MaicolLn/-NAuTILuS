@@ -12,6 +12,49 @@ from matplotlib.ticker import MaxNLocator
 from sklearn.linear_model import LinearRegression
 import math
 import random
+def calcular_intersecciones_promedio_individual(valores_hi, ventanas, umbral):
+    """
+    Calcula el promedio de días faltantes hasta alcanzar el umbral,
+    proyectando la intersección a partir de una regresión lineal sobre ventanas recientes.
+
+    Args:
+        valores_hi (list or array): Valores del índice de salud.
+        ventanas (list of int): Tamaños de ventana para ajustar la regresión.
+        umbral (float): Umbral para proyectar la intersección.
+
+    Returns:
+        float or None: Días promedio hasta alcanzar el umbral, o None si no hay datos válidos.
+    """
+    from sklearn.linear_model import LinearRegression
+    import numpy as np
+
+    health_index = np.array(valores_hi)
+    dias_validos = np.arange(1, len(health_index) + 1)
+    interceptos = []
+
+    for ventana in ventanas:
+        if len(health_index) < ventana:
+            continue
+
+        X = dias_validos[-ventana:].reshape(-1, 1)
+        y = health_index[-ventana:]
+
+        modelo = LinearRegression()
+        modelo.fit(X, y)
+        m = modelo.coef_[0]
+        b = modelo.intercept_
+
+        if m != 0:
+            x_interseccion = (umbral - b) / m
+            faltan_dias = x_interseccion - len(health_index)
+
+            if m > 0 and faltan_dias > 0:
+                interceptos.append(faltan_dias)
+
+    if interceptos:
+        return round(np.mean(interceptos), 1)
+    else:
+        return None
 
 def calcular_health_index_subsistema(nombre_subsistema,subsistemas, df_base, modelos, scalers, time_steps):
     if nombre_subsistema in modelos:
@@ -39,7 +82,7 @@ def calcular_health_index_subsistema(nombre_subsistema,subsistemas, df_base, mod
 
 
 def nautilus_en_marcha():
-    st.header("🚢 Nautilus en marcha")
+    st.header("🚀Health index & RUL")
      
     plt.style.use("seaborn-v0_8-whitegrid")
     sns.set_palette("colorblind")
@@ -57,7 +100,7 @@ def nautilus_en_marcha():
     st.sidebar.subheader("⚙️ Simulación")
     modelo = st.sidebar.selectbox(
         "🟦 Tipo de datos a visualizar",
-        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías", "🔵 Datos de operación "]
+        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías"]
     )
 
     tipo_datos=modelo
@@ -80,10 +123,10 @@ def nautilus_en_marcha():
 
     # === 2. Umbrales específicos por subsistema ===
     umbrales = {
-        "Sistema de Refrigeración": 9,
-        "Sistema de Combustible": 18,
-        "Sistema de Lubricación": 1,
-        "Temperatura de Gases de Escape": 3.5
+        "Sistema de Refrigeración": 0.25,
+        "Sistema de Combustible": 0.36,
+        "Sistema de Lubricación": 0.58,
+        "Temperatura de Gases de Escape": 0.23
     }
     umbral = float(umbrales[subsistema_sel])
     if not variables_disponibles:
@@ -92,12 +135,31 @@ def nautilus_en_marcha():
 
 
     st.sidebar.markdown("📌 Variables del subsistema:")
-    var_sel = []
+    var_sel= []
+
     for var in variables_disponibles:
-        if st.sidebar.checkbox(var, value=True):
+        nombre_largo = resultado[var].get("Nombre", var)
+
+        # Crear el texto con tooltip
+        label_html = f"""
+            <label title="{nombre_largo}" style="cursor: pointer;">
+                {var}
+            </label>
+        """
+
+        # Usamos una columna para alinear checkbox sin texto, y el HTML al lado
+        col1, col2 = st.sidebar.columns([1, 4])
+        
+        with col1:
+            checked = st.checkbox("", value=True, key=var)
+        
+        with col2:
+            st.markdown(label_html, unsafe_allow_html=True)
+
+        if checked:
             var_sel.append(var)
     iteraciones = st.sidebar.number_input("📅 Días de operación", min_value=2, max_value=60, value=7, step=1)
-    velocidad = st.sidebar.slider("Velocidad de simulación", 0.01, 2.0, 0.5, 0.1)
+    velocidad = 0.1
     with st.sidebar.expander("📆 Ventanas de proyección RUL (en días)"):
         try:
             ventana_1 = st.number_input("Ventana 1", min_value=1, value=7, step=1)
@@ -230,6 +292,28 @@ def nautilus_en_marcha():
             # Concatenar todos los vectores en una sola matriz para análisis multivariable
             vector_multivariable = np.concatenate([vectores[var] for var in variables_disponibles], axis=1)
             scaled_vector = scaler.transform(vector_multivariable)
+            sequence = np.expand_dims(scaled_vector, axis=0)  # [1, time_steps, n_features]
+
+            # === 4. Predicción ===
+            x_pred = modelo.predict(sequence, verbose=0)
+
+            # === 5. Calcular el error absoluto máximo por día ===
+            
+            mae_por_variable = np.mean(np.abs(sequence - x_pred), axis=(0, 1))
+            mae_day = float(np.mean(mae_por_variable))
+
+            # Guarda el error
+            intersecciones={}
+            for i, var in enumerate(variables_disponibles):
+                mae_day_v = mae_por_variable[i]
+                st.session_state["health_index_variables"][subsistema_sel][var].append(mae_day_v)
+                valores_hi = st.session_state["health_index_variables"][subsistema_sel][var]
+                
+                interseccion_prom = calcular_intersecciones_promedio_individual(valores_hi, ventanas, umbral)
+
+                intersecciones[var] = interseccion_prom  # Guardar en el diccionario
+
+            time.sleep(10)
             reconstrucciones = []
             errores_mse = []
             
@@ -273,12 +357,26 @@ def nautilus_en_marcha():
                 for ax, var in zip(axs, var_sel):
                     muestra = muestra_df[var].values[:i]
                     info = resultado.get(var, {})
+                    interseccion_var = intersecciones.get(var)
                     nombre = info.get("Nombre", var)
-                    unidad = info.get("Unidad", "")
 
+                    unidad = info.get("Unidad", "")
+                    
                     ax.set_title(nombre, fontweight="bold")
                     ax.set_facecolor(fondo)
-                    ax.plot(muestra, color="green", marker='o', label=nombre)
+                    if interseccion_var is not None:
+
+                        dias_restantes = float(interseccion_var) 
+
+                        if dias_restantes < 1:
+                            nombre_legenda = f"{var} | ⚠️ RUL crítico"
+                        else:
+                            nombre_legenda = f"{var} | RUL ≈ {dias_restantes:.1f} días"
+                    else:
+                        nombre_legenda = f"{var} | RUL: --"
+
+                    ax.plot(muestra, color="green", marker='o', label=nombre_legenda)
+
                     ax.grid(True, alpha=0.3)
                     ax.set_ylim([np.min(muestra) - 1, np.max(muestra) + 1])
 
@@ -288,9 +386,6 @@ def nautilus_en_marcha():
                     if info.get("Valor nominal") is not None:
                         ax.axhline(info["Valor nominal"], color='yellow', linestyle='--', linewidth=1.2, alpha=0.7,
                                 label=f"Nominal ({info['Valor nominal']})")
-                    if info.get("Valor máximo") is not None:
-                        ax.axhline(info["Valor máximo"], color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
-                                label=f"Máximo ({info['Valor máximo']})")
 
                     ax.legend(loc='upper right')
                 fig_sim.suptitle(
@@ -302,28 +397,26 @@ def nautilus_en_marcha():
 
                 # Guarda última figura en sesión
                 st.session_state["ultima_fig_sim"] = fig_sim
-                # st.session_state["ultima_fig_hi"] = fig_hi
-                # st.session_state["ultima_fig_rul"] = fig_rul
+                
+                
                 st.session_state["health_index"][subsistema_sel]= health_index
 
                 time.sleep(velocidad)
-            sequence = np.expand_dims(scaled_vector, axis=0)  # [1, time_steps, n_features]
 
-            # === 4. Predicción ===
-            x_pred = modelo.predict(sequence, verbose=0)
 
-            # === 5. Calcular el error absoluto máximo por día ===
-            mae_day = np.mean(np.abs(sequence - x_pred))
-            if tipo_datos == "🔴 Datos con anomalías":
-                sumaa= random.uniform(2, 5)
-                mae_day= mae_day+sumaa
+            # if tipo_datos == "🔴 Datos con anomalías":
+            #     sumaa= random.uniform(2, 5)
+            #     mae_day= mae_day+sumaa
 
-            health_index.append(mae_day)
+            st.session_state["health_index"][subsistema_sel].append(mae_day)
+
+
+
             # === 6. Graficar el Health Index ===
             # ✅ Graficar índice de salud acumulado
             fig_hi, ax_hi = plt.subplots(figsize=(8, 4))
             dias = list(range(1, len(health_index) + 1))
-            ax_hi.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de Salud Diario: {(mae_day):.1f}')
+            ax_hi.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de salud día {len(health_index)}: {(mae_day):.2f}')
             ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
             ax_hi.set_title(f"📉 Health Index - Subsistema: {subsistema_sel}")
             ax_hi.set_xlabel("Día")
@@ -407,16 +500,6 @@ def nautilus_en_marcha():
 
             st.session_state["health_index"][subsistema_sel] = health_index
 
-            for nombre_subsistema in subsistemas:
-                if nombre_subsistema != subsistema_sel:
-                    if nombre_subsistema not in st.session_state["health_index"]:
-                        st.session_state["health_index"][nombre_subsistema] = []
-
-                    diferencia = len(st.session_state["health_index"][subsistema_sel]) - len(st.session_state["health_index"][nombre_subsistema])
-                    for _ in range(diferencia):
-                        nuevo_valor = calcular_health_index_subsistema(nombre_subsistema,subsistemas, df, modelos, scalers, time_steps)
-                        if nuevo_valor is not None:
-                            st.session_state["health_index"][nombre_subsistema].append(nuevo_valor)
 
 
 
