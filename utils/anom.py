@@ -7,7 +7,7 @@ import math
 import streamlit as st
 
 def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_sel, factor_escala=1.0, limites=None):
-    st.write(f"🔍 Análisis de Anomalías - Subsistema: {subsistema_sel}")
+    st.write(f"🔍 Detección de Anomalías - {subsistema_sel}")
 
     # Tema Streamlit
     tema = st.get_option("theme.base")
@@ -16,12 +16,12 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
     color_grid = "#DDDDDD" if tema == "light" else "#44444400"
         # === 2. Umbrales específicos por subsistema ===
     umbrales = {
-        "Sistema de Refrigeración": 0.25,
+        "Sistema de Refrigeración": 0.4,
         "Sistema de Combustible": 0.36,
-        "Sistema de Lubricación": 0.58,
-        "Temperatura de Gases de Escape": 0.23
+        "Sistema de Lubricación": 0.5,
+        "Temperatura de Gases de Escape": 0.4
     }
-    umbral = float(umbrales[subsistema_sel])
+    # umbral = float(umbrales[subsistema_sel])
 
     n_datos=30
     # Estilo visual
@@ -93,6 +93,8 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
     for i, var in enumerate(variables):
         info = resultado.get(var, {})
         nombre = info.get("Nombre", var)
+        umbral = st.session_state["umbrales"].get(var)
+
 
         # Obtener valores reales
         if muestra_df is not None and var in muestra_df.columns:
@@ -174,7 +176,7 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
         ax_err.set_facecolor(fondo)
         ax_err.plot(errores_mae_var, color="red", linestyle="-", alpha=0.8, label="Error (MAE)")
         ax_err.set_title(f"Error de reconstrucción - {nombre}", fontweight="bold", color=color_letra)
-        ax_err.axhline(y=umbral, color="red", linestyle="--", linewidth=1.5, label="Umbral de error")
+        ax_err.axhline(y=umbral, color="red", linestyle="--", linewidth=1.5, label=f"Umbral de error : {umbral}")
         ax_err.tick_params(axis='both', labelsize=9, colors=color_letra)
         ax_err.grid(True, alpha=0.4)
         ax_err.legend(loc='upper right')

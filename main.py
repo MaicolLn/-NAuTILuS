@@ -38,6 +38,10 @@ with open("subsistemas.json", "r", encoding="utf-8") as f:
     subsistemas = json.load(f)
     st.session_state["subsistemas"] = subsistemas  # ✅ Esto evita el error
 
+# Cargar umbrales
+with open("umbrales.json", "r", encoding="utf-8") as f:
+    umbrales = json.load(f)
+    st.session_state["umbrales"] = umbrales  # ✅ Guarda los umbrales en el estado de sesión
 
 # Cargar resultado.json (con límites y mediciones)
 with open("resultado.json", "r", encoding="utf-8") as f:
@@ -51,13 +55,22 @@ if "resultado" not in st.session_state:
         st.session_state.resultado = {}
 
 import numpy as np
-
+len_alet=31
 if "health_index" not in st.session_state:
     st.session_state["health_index"] = {}
 
+if "remaining_useful_life" not in st.session_state:
+    st.session_state["remaining_useful_life"] = {}
+
+for nombre_subsistema, variables in subsistemas.items():
+    if nombre_subsistema not in st.session_state["remaining_useful_life"]:
+        rul_dic = list(np.random.uniform(700, 1500, len_alet))
+        st.session_state["remaining_useful_life"][nombre_subsistema] = []
+
+
 for nombre_subsistema, variables in subsistemas.items():
     if nombre_subsistema not in st.session_state["health_index"]:
-        alet = list(np.random.uniform(0.01, 0.3, 120))
+        alet = list(np.random.uniform(0.01, 0.2, len_alet))
         divisor = len(variables) if len(variables) > 0 else 1  # Evita división por cero
         alet_dividido = [x / divisor for x in alet]
         st.session_state["health_index"][nombre_subsistema] = alet
@@ -91,7 +104,8 @@ st.divider()
 seccion = st.sidebar.selectbox("📌 Selecciona una sección:", [
     "🔄 Generación de datos",
     "📉Detección de anomalías",
-    "🚀Health index & RUL"
+    "🚀Health index & RUL",
+    # "🚀Health index & RUL_Prueba"
 ])
 
 
@@ -118,9 +132,12 @@ if seccion == "🔄 Generación de datos":
 # -----------------------------------------------------
 # VISUALIZACIÓN
 # -----------------------------------------------------
+elif seccion == "📉Detección de anomalías":
+    import numpy as np
+    detec_A()
 
 
-elif seccion == "🚀Health index & RUL":
+elif seccion == "🚀Health index & RUL_p":
 
     nautilus_en_marcha()
 
@@ -133,12 +150,12 @@ elif seccion == "🚀Health index & RUL":
 #     from Secciones.nautilus import nautilus_en_marcha
 #     nautilus_en_marcha(resultado, subsistemas)
 
-elif seccion == "🚀 Nautilus univariable":
-    import numpy as np
+# elif seccion == "🚀 Nautilus univariable":
+#     import numpy as np
 
-    PanelC()
+#     PanelC()
 
-elif seccion == "🚀 Nautilus mixto":
+elif seccion == "🚀Health index & RUL":
     nautilus_en_marcha_2()
 #     import numpy as np
 #     # 1. Inicializa la lista si no existe
@@ -147,7 +164,3 @@ elif seccion == "🚀 Nautilus mixto":
 
 #     # 3. Llama a la función de graficado con todos los datos acumulados
 #     PanelC()
-elif seccion == "📉Detección de anomalías":
-    import numpy as np
-    detec_A()
-   

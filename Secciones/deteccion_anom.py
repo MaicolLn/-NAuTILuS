@@ -68,13 +68,13 @@ def detec_A():
 
 
     # === 2. Umbrales específicos por subsistema ===
+    # === 2. Umbrales específicos por subsistema ===
     umbrales = {
-        "Sistema de Refrigeración": 9,
+        "Sistema de Refrigeración": 0.4,
         "Sistema de Combustible": 0.36,
-        "Sistema de Lubricación": 1,
-        "Temperatura de Gases de Escape": 3.5
+        "Sistema de Lubricación": 0.5,
+        "Temperatura de Gases de Escape": 0.4
     }
-
     umbral = float(umbrales[subsistema_sel])
     if not variables_disponibles:
         st.warning("No hay variables válidas para este subsistema.")
@@ -120,13 +120,8 @@ def detec_A():
     }
 
         # === 2. Umbrales específicos por subsistema ===
-    umbrales = {
-        "Sistema de Refrigeración": 9,
-        "Sistema de Combustible": 18,
-        "Sistema de Lubricación": 1,
-        "Temperatura de Gases de Escape": 3.5
-    }
-    umbral = float(umbrales[subsistema_sel])
+
+
 
     print("Subsistema seleccionado por el usuario:", subsistema_sel)
     modelo_dir = os.path.join(os.getcwd(), "modelos")
@@ -185,6 +180,8 @@ def detec_A():
     # Botón para recargar muestra
     if st.sidebar.button("🔄 Recargar muestra"):
         st.session_state.df_seleccion = df[variables_disponibles].sample(n=n_datos)
+
+    st.session_state.df_seleccion = df[variables_disponibles].sample(n=n_datos)
 
     # Llamada a la función anomalias con la muestra ya tomada
     anomalias(

@@ -89,7 +89,7 @@ def cargar_modelos():
         # Botón para forzar recarga
         # Reemplazar columnas específicas en datos_modelo_2 por valores del dataframe externo
     columnas_reemplazo = [
-        "TE101", "TE201", "TE202", "TE272", "RPM", "TE511", "TE517", "TE5011A","TE600 - Carga"
+        "TE101", "TE201", "TE202", "TE272", "RPM", "TE511", "TE517", "TE5011A","TE600 - Carga", "PT401", "TE401"
     ]
 
     try:

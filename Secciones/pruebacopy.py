@@ -174,7 +174,7 @@ def nautilus_en_marcha_2():
 
     # === 2. Umbrales específicos por subsistema ===
     umbrales = {
-        "Sistema de Refrigeración": 0.25,
+        "Sistema de Refrigeración": 0.4,
         "Sistema de Combustible": 0.36,
         "Sistema de Lubricación": 0.5,
         "Temperatura de Gases de Escape": 0.4
@@ -213,16 +213,16 @@ def nautilus_en_marcha_2():
     velocidad = 0.1
     with st.sidebar.expander("📆 Ventanas de proyección RUL (en días)"):
         try:
-            ventana= st.number_input("Ventana 1", min_value=1, value=30, step=1)
-            # ventana_2 = st.number_input("Ventana 2", min_value=1, value=30, step=1)
-            # ventana_3 = st.number_input("Ventana 3", min_value=1, value=60, step=1)
-            # ventana_4 = st.number_input("Ventana 4", min_value=1, value=120, step=1)
+            ventana_1 = st.number_input("Ventana 1", min_value=1, value=7, step=1)
+            ventana_2 = st.number_input("Ventana 2", min_value=1, value=30, step=1)
+            ventana_3 = st.number_input("Ventana 3", min_value=1, value=60, step=1)
+            ventana_4 = st.number_input("Ventana 4", min_value=1, value=120, step=1)
 
-            # # Juntar en lista ordenada y sin duplicados
-            # ventanas = sorted(set([ventana_1, ventana_2, ventana_3, ventana_4]))
+            # Juntar en lista ordenada y sin duplicados
+            ventanas = sorted(set([ventana_1, ventana_2, ventana_3, ventana_4]))
         except Exception as e:
             st.warning(f"❌ Error en las ventanas: {e}. Usando valores por defecto.")
-            ventana= 30
+            ventanas = [7, 15, 30, 60]
 
     # Crear contenedores si no existen
     if "contenedor_sim" not in st.session_state:
@@ -483,64 +483,71 @@ def nautilus_en_marcha_2():
             colores_ransac = ['orange', 'green', 'purple', 'brown']
             pendientes_ransac = []
             pesos_pendientes = [0.05, 0.015, 0.4, 0.4]
-            # ventana=30
 
-            if len(dias_x) >= ventana:
-                # Selección de ventana de datos
-                dias_modelo = np.array(dias_x[-ventana:])
-                salud_modelo = np.array(valores_y[-ventana:])
+            for ventana in ventanas_dias:
+                if len(dias_x) >= ventana:
+                    x_win = np.array(dias_x[-ventana:])
+                    y_win = np.array(valores_y[-ventana:])
 
-                # Suavizado con mediana móvil
-                salud_suavizada = pd.Series(salud_modelo).rolling(window=3, center=True).median().dropna().values
-                dias_suavizados = dias_modelo[1:-1].reshape(-1, 1)  # Alinear con salud_suavizada
+                    # Suavizado con mediana móvil
+                    y_suave = pd.Series(y_win).rolling(window=3, center=True).median().dropna().values
+                    x_suave = x_win[1:-1]  # Para que coincidan en longitud con y_suave
 
-                if len(salud_suavizada) > 1:
-                    # Ajuste lineal con sklearn
-                    modelo_lineal = LinearRegression()
-                    modelo_lineal.fit(dias_suavizados, salud_suavizada)
+                    # Diferencia central sobre datos suavizados
+                    dy = y_suave[1:] - y_suave[:-1]
+                    dx = x_suave[1:] - x_suave[:-1]
+                    pendientes = dy / dx
 
-                    pendiente = modelo_lineal.coef_[0]
-                    intercepto = modelo_lineal.intercept_
+                    pendiente_prom = np.median(pendientes)
+                    pendientes_ransac.append(pendiente_prom)
 
-                    # Calcular intersección con el umbral
-                    x_interseccion = None
-                    if pendiente != 0:
-                        x_interseccion = (umbral - intercepto) / pendiente
+                    # st.write(f"Ventana {ventana} días → Pendiente (Dif. central sobre suavizado): {pendiente_prom:.4f}")
 
-                    # Punto inicial: primer día suavizado
-                    x_inicio = dias_suavizados[0][0]
 
-                    # Crear valores de proyección hacia el futuro
-                    if (x_interseccion is not None and x_interseccion > len(health_index)) and pendiente > 0:
-                        x_proyeccion = np.linspace(x_inicio, x_interseccion, 200)
+            # Calcular pendiente promedio ponderada
+            if pendientes_ransac:
+                pendiente_ponderada = np.average(pendientes_ransac, weights=pesos_pendientes[:len(pendientes_ransac)])
+                # st.write(f"**Pendiente ponderada final:** {pendiente_ponderada:.4f}")
+
+                # Proyección desde primeros valores de los últimos 7 días
+                dias_base = np.array(dias_x[-7:])
+                salud_base = np.array(valores_y[-7:])
+                x0 = dias_base[0]
+                y0 = salud_base[0]
+                b_ponderada = y0 - pendiente_ponderada * x0
+
+                # Calcular intersección con el umbral
+                x_intersec = None
+                if pendiente_ponderada != 0:
+                    x_intersec = (umbral - b_ponderada) / pendiente_ponderada
+
+                # Si hay intersección válida, graficar hasta ese punto
+                if (x_intersec is not None and x_intersec > len(health_index)) and pendiente_ponderada > 0:
+                    x_pred = np.linspace(x0, x_intersec, 200)
+                else:
+                    x_pred = np.linspace(x0, dias_x[-1] + 10, 200)
+
+                y_pred = pendiente_ponderada * x_pred + b_ponderada
+                ax.plot(x_pred, y_pred, color='red', linewidth=2, label='Proyección')
+
+                # Graficar datos reales y umbral
+                # ax.scatter(dias_x, valores_y, color='blue', s=60, label="Health Index")
+                ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label='Umbral')
+                ax.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de salud día {len(health_index)}: {(mae_day):.2f}')
+                # Mostrar punto de intersección si existe
+                titulo = "Proyección Health Index"
+                if x_intersec and pendiente_ponderada > 0:
+                    interceptos_ventana=x_intersec
+                    dias_faltantes = x_intersec - len(health_index)
+                    ax.scatter(x_intersec, umbral, color='black', s=40, zorder=5)
+                    if dias_faltantes > 1:
+                        ax.text(x_intersec + 1, umbral, f"Faltan {dias_faltantes:.1f} días",
+                                bbox=dict(facecolor=fondo, edgecolor=color_letra))
+                        titulo += " 🔴"
                     else:
-                        x_proyeccion = np.linspace(x_inicio, dias_x[-1] + 10, 200)
-
-                    y_proyeccion = modelo_lineal.predict(x_proyeccion.reshape(-1, 1))
-
-                    # Línea de regresión proyectada
-                    ax.plot(x_proyeccion, y_proyeccion, color='red', linewidth=2, label='Tendencia')
-
-                    # Umbral y datos reales
-                    ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label=f'Umbral: {umbral}')
-                    ax.scatter(dias, health_index, marker='o', linestyle='-', color='blue',
-                            label=f'Índice de salud día {len(health_index)}: {(mae_day):.2f}')
-
-                    # Mostrar intersección si aplica
-                    titulo = "Proyección Health Index"
-                    if x_interseccion is not None and pendiente > 0:
-                        interceptos_ventana = x_interseccion
-                        dias_restantes = x_interseccion - len(health_index)
-                        ax.scatter(x_interseccion, umbral, color='black', s=40, zorder=5)
-                        if dias_restantes > 1:
-                            ax.text(x_interseccion + 1, umbral, f"Faltan {dias_restantes:.0f} días",
-                                    bbox=dict(facecolor=fondo, edgecolor=color_letra))
-                            titulo += " 🔴"
-                        else:
-                            interceptos_ventana = -1
-                    else:
-                        interceptos_ventana = None
-
+                        interceptos_ventana=-1
+                else: 
+                    interceptos_ventana=None
 
             ax.set_title(titulo)
             ax.set_xlabel("Día")
@@ -567,10 +574,7 @@ def nautilus_en_marcha_2():
             if interceptos_ventana:
                 intercepción_hi = interceptos_ventana 
                 rul_promedio= intercepción_hi- len(health_index)
-                if rul_promedio>0:
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(rul_promedio)
-                else:
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(0)
+                st.session_state["remaining_useful_life"][subsistema_sel].append(rul_promedio)
                 if intercepción_hi>( len(health_index) + 1):
                     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                             background-color:#f0f2f6;
@@ -580,7 +584,7 @@ def nautilus_en_marcha_2():
                             font-size: 16px;
                             font-weight: bold;
                             color: #333;'>
-                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(rul_promedio):.0f} días para superar el health index permitido.
+                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(rul_promedio):.1f} días para superar el health index permitido.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
@@ -594,7 +598,7 @@ def nautilus_en_marcha_2():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado </span> Revisión urgente, se ha superado el health index límite.
+                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado - Día {intercepción_hi:.0f} </span> Revisión urgente, se ha superado el health index límite.
                     </div>"""
                     st.session_state["contenedor_rul_mensaje"].markdown(
                         st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
@@ -603,7 +607,8 @@ def nautilus_en_marcha_2():
             else: 
                 if st.session_state["remaining_useful_life"][subsistema_sel]:
                     # Si la lista NO está vacía, se repite el último valor
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(633
+                    st.session_state["remaining_useful_life"][subsistema_sel].append(
+                        st.session_state["remaining_useful_life"][subsistema_sel][-1]
                     )
                 else:
                     # Si está vacía, se agrega None como valor inicial
