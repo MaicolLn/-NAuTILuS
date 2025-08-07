@@ -13,6 +13,8 @@ from sklearn.linear_model import LinearRegression
 import math
 import random
 from sklearn.linear_model import RANSACRegressor, LinearRegression
+import plotly.graph_objects as go
+
 def calcular_intersecciones_promedio_individual(valores_hi, ventanas, umbral):
 #     """
 #     Calcula el promedio de días faltantes hasta alcanzar el umbral,
@@ -231,11 +233,15 @@ def nautilus_en_marcha_2():
         st.session_state["contenedor_health"] = st.empty()
     if "contenedor_rul" not in st.session_state:
         st.session_state["contenedor_rul"] = st.empty()
-    if "contenedor_rul_mensaje" not in st.session_state:
-        st.session_state["contenedor_rul_mensaje"] = st.empty()
-
     if "contenedor_rul_plot" not in st.session_state:
         st.session_state["contenedor_rul_plot"] = st.empty()
+    if "contenedor_rul_mensaje" not in st.session_state:
+        st.session_state["contenedor_rul_mensaje"] = st.empty()
+    if "contenedor_rul_resumen" not in st.session_state:
+        st.session_state["contenedor_rul_resumen"] = st.empty()
+    if "contenedor_rul_resumen_var" not in st.session_state:
+        st.session_state["contenedor_rul_resumen_var"] = st.empty()
+
 
 
 
@@ -252,15 +258,30 @@ def nautilus_en_marcha_2():
             st.session_state["contenedor_sim"].pyplot(st.session_state["ultima_fig_sim"])
         # if "ultima_fig_hi" in st.session_state:
         #     st.session_state["contenedor_health"].pyplot(st.session_state["ultima_fig_hi"])
-        if "ultima_fig_rul" in st.session_state:
-            st.session_state["contenedor_rul"].pyplot(st.session_state["ultima_fig_rul"])    
+        if "ultima_fig_rul" in st.session_state and "contenedor_rul" in st.session_state:
+            fig = st.session_state["ultima_fig_rul"]
+            contenedor = st.session_state["contenedor_rul"]
+            contenedor.plotly_chart(fig, use_container_width=True)
+                            # Mostrar la figura si existe
+        if "ultima_fig_rul_plot" in st.session_state and "contenedor_rul_plot" in st.session_state:
+            fig = st.session_state["ultima_fig_rul_plot"]
+            contenedor = st.session_state["contenedor_rul_plot"]
+            contenedor.plotly_chart(fig, use_container_width=True)
+
         if "ultimo_rul_mensaje" in st.session_state:
             st.session_state["contenedor_rul_mensaje"].markdown(
                 st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
             )
-                # Mostrar la figura si existe
-        if "ultima_fig_rul_plot" in st.session_state:
-            st.session_state["contenedor_rul_plot"].pyplot(st.session_state["ultima_fig_rul_plot"])
+
+        if "ultimo_rul_resumen" in st.session_state:
+            st.session_state["contenedor_rul_resumen"].markdown(
+                st.session_state["ultimo_rul_resumen"], unsafe_allow_html=True
+            )
+        if "ultimo_rul_resumen_var" in st.session_state:
+            st.session_state["contenedor_rul_resumen_var"].markdown(
+                st.session_state["ultimo_rul_resumen_var"], unsafe_allow_html=True
+            )
+            
 
 
     # Lista de subsistemas con modelo asociado
@@ -319,8 +340,11 @@ def nautilus_en_marcha_2():
         st.session_state["contenedor_sim"].empty()
         st.session_state["contenedor_health"].empty()
         st.session_state["contenedor_rul"].empty()
-        st.session_state["contenedor_rul_mensaje"].empty()
         st.session_state["contenedor_rul_plot"].empty()
+        st.session_state["contenedor_rul_mensaje"].empty()
+        st.session_state["contenedor_rul_resumen"].empty()
+        st.session_state["contenedor_rul_resumen_var"].empty()
+
         st.session_state.pop("ultima_fig_sim", None)
         st.session_state.pop("ultima_fig_hi", None)
         st.session_state.pop("ultima_fig_rul", None)
@@ -459,103 +483,134 @@ def nautilus_en_marcha_2():
 
             # === 6. Graficar el Health Index ===
             # ✅ Graficar índice de salud acumulado
-            fig_hi, ax_hi = plt.subplots(figsize=(8, 4))
-            dias = list(range(1, len(health_index) + 1))
-            ax_hi.scatter(dias, health_index, marker='o', linestyle='-', color='blue', label=f'Índice de salud día {len(health_index)}: {(mae_day):.2f}')
-            ax_hi.axhline(umbral, color="red", linestyle='--', linewidth=1.5, label=f"Umbral ({umbral:.0f})")
-            ax_hi.set_title(f"📉 Health Index - Subsistema: {subsistema_sel}")
-            ax_hi.set_xlabel("Día")
-            ax_hi.set_ylabel("Health Index")
-            ax_hi.grid(True, alpha=0.3)
-            ax_hi.legend()
-            # contenedor_health.pyplot(fig_hi)
-            st.session_state["ultima_fig_hi"] = fig_hi
-            # st.session_state["contenedor_health"].pyplot(fig_hi)
+            import plotly.graph_objects as go
 
-            # === RUL Prediction ===
-            
-            # interceptos_ventana = []
-            fig_rul, ax = plt.subplots(figsize=(10, 6))
-            dias_x = list(range(1, len(health_index) + 1))  # Eje X
-            valores_y = health_index  # Eje Y (índice de salud)
+            # === RUL Prediction con Plotly ===
+            dias_x = list(range(1, len(health_index) + 1))
+            valores_y = health_index
 
-            ventanas_dias = [7, 15, 30, 60]
-            colores_ransac = ['orange', 'green', 'purple', 'brown']
-            pendientes_ransac = []
-            pesos_pendientes = [0.05, 0.015, 0.4, 0.4]
-            # ventana=30
+            fig_rul = go.Figure()
 
+            # Datos reales
+            fig_rul.add_trace(go.Scatter(
+                x=dias_x,
+                y=valores_y,
+                mode='markers',
+                name=f'Health Index día {len(health_index)}: {mae_day:.2f}',
+                marker=dict(color='blue'),
+                hovertemplate='Día: %{x}<br>Health Index: %{y:.2f}<extra></extra>'
+            ))
+
+            # # Línea de umbral
+            # fig_rul.add_trace(go.Scatter(
+            #     x=[min(dias_x), max(x_proyeccion)],
+            #     y=[umbral, umbral],
+            #     mode='lines',
+            #     name=f'Umbral: {umbral}',
+            #     line=dict(color='red', dash='dot'),
+            #     hoverinfo='skip'  # No mostrar tooltip para esta línea
+            # ))
+
+            # Ajuste lineal y predicción
             if len(dias_x) >= ventana:
-                # Selección de ventana de datos
                 dias_modelo = np.array(dias_x[-ventana:])
                 salud_modelo = np.array(valores_y[-ventana:])
 
-                # Suavizado con mediana móvil
                 salud_suavizada = pd.Series(salud_modelo).rolling(window=3, center=True).median().dropna().values
-                dias_suavizados = dias_modelo[1:-1].reshape(-1, 1)  # Alinear con salud_suavizada
+                dias_suavizados = dias_modelo[1:-1].reshape(-1, 1)
 
                 if len(salud_suavizada) > 1:
-                    # Ajuste lineal con sklearn
                     modelo_lineal = LinearRegression()
                     modelo_lineal.fit(dias_suavizados, salud_suavizada)
 
                     pendiente = modelo_lineal.coef_[0]
                     intercepto = modelo_lineal.intercept_
 
-                    # Calcular intersección con el umbral
-                    x_interseccion = None
-                    if pendiente != 0:
-                        x_interseccion = (umbral - intercepto) / pendiente
-
-                    # Punto inicial: primer día suavizado
+                    x_interseccion = (umbral - intercepto) / pendiente if pendiente != 0 else None
                     x_inicio = dias_suavizados[0][0]
 
-                    # Crear valores de proyección hacia el futuro
                     if (x_interseccion is not None and x_interseccion > len(health_index)) and pendiente > 0:
                         x_proyeccion = np.linspace(x_inicio, x_interseccion, 200)
                     else:
                         x_proyeccion = np.linspace(x_inicio, dias_x[-1] + 10, 200)
 
                     y_proyeccion = modelo_lineal.predict(x_proyeccion.reshape(-1, 1))
+                    
 
-                    # Línea de regresión proyectada
-                    ax.plot(x_proyeccion, y_proyeccion, color='red', linewidth=2, label='Tendencia')
 
-                    # Umbral y datos reales
-                    ax.axhline(umbral, color='red', linestyle='dotted', linewidth=2, label=f'Umbral: {umbral}')
-                    ax.scatter(dias, health_index, marker='o', linestyle='-', color='blue',
-                            label=f'Índice de salud día {len(health_index)}: {(mae_day):.2f}')
 
-                    # Mostrar intersección si aplica
-                    titulo = "Proyección Health Index"
+                    # Punto de intersección
                     if x_interseccion is not None and pendiente > 0:
-                        interceptos_ventana = x_interseccion
                         dias_restantes = x_interseccion - len(health_index)
-                        ax.scatter(x_interseccion, umbral, color='black', s=40, zorder=5)
-                        if dias_restantes > 1:
-                            ax.text(x_interseccion + 1, umbral, f"Faltan {dias_restantes:.0f} días",
-                                    bbox=dict(facecolor=fondo, edgecolor=color_letra))
-                            titulo += " 🔴"
-                        else:
-                            interceptos_ventana = -1
+                        interceptos_ventana = x_interseccion 
+                        # === Datos reales sin conectar ===
                     else:
                         interceptos_ventana = None
 
+            fig_rul = go.Figure()
+            # luego, agregar las trazas
 
-            ax.set_title(titulo)
-            ax.set_xlabel("Día")
-            ax.set_ylabel("Health Index")
-            ax.grid(True)
-            ax.legend()
+            fig_rul.add_trace(go.Scatter(
+                x=dias_x,
+                y=valores_y,
+                mode='markers',
+                name=f'Health Index día {len(health_index)}: {mae_day:.2f}',
+                marker=dict(color='blue'),
+                hovertemplate='Día: %{x}<br>Health Index: %{y:.2f}<extra></extra>'
+            ))
 
-            fig_rul.suptitle(f"🔮 Proyección de RUL tras día {len(health_index)}", fontweight='bold', y=1.02)
-            plt.tight_layout()
-            contenedor_rul.pyplot(fig_rul)
+            # Punto negro en la intersección (si existe)
+            if x_interseccion is not None and pendiente > 0:
+                fig_rul.add_trace(go.Scatter(
+                    x=[x_interseccion],
+                    y=[umbral],
+                    mode='markers',
+                    name=f'Intersección estimada el día: {x_interseccion:.0f}',
+                    marker=dict(color='black', size=10, symbol='circle'),
+                    hovertemplate='Día estimado: %{x:.1f}<br>Health Index: %{y:.2f}<extra></extra>'
+                ))
+
+
+            # === Línea de umbral extendida ===
+            x_umbral_min = min(dias_x)
+            x_umbral_max = max(x_proyeccion) + 5 if len(health_index)< x_interseccion else max(dias_x)
+
+            # Línea de tendencia
+            fig_rul.add_trace(go.Scatter(
+                x=x_proyeccion,
+                y=y_proyeccion,
+                mode='lines',
+                name='Tendencia',
+                line=dict(color='red'),
+                hoverinfo='skip'
+            ))
+
+            fig_rul.add_trace(go.Scatter(
+                 x=[0, max(x_proyeccion) + 5],
+                y=[umbral] * len(x_proyeccion),
+                mode='lines',
+                name=f'Umbral: {umbral}',
+                line=dict(color='red', dash='dot'),
+                hoverinfo='skip'
+            ))
+
+            # Layout general
+            fig_rul.update_layout(
+                title=f"🔮 Proyección de RUL tras día {len(health_index)}",
+                xaxis_title="Día",
+                yaxis_title="Health Index",
+                height=600,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+
+            # Mostrar en Streamlit
+            contenedor_rul.plotly_chart(fig_rul, use_container_width=True)
+
 
 
             # Mostrar gráfico en contenedor
             st.session_state["ultima_fig_sim"] = fig_sim
-            st.session_state["ultima_fig_hi"] = fig_hi
+            # st.session_state["ultima_fig_hi"] = fig_hi
             st.session_state["ultima_fig_rul"] = fig_rul
 
 
@@ -567,10 +622,7 @@ def nautilus_en_marcha_2():
             if interceptos_ventana:
                 intercepción_hi = interceptos_ventana 
                 rul_promedio= intercepción_hi- len(health_index)
-                if rul_promedio>0:
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(rul_promedio)
-                else:
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(0)
+                st.session_state["remaining_useful_life"][subsistema_sel].append(rul_promedio)
                 if intercepción_hi>( len(health_index) + 1):
                     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                             background-color:#f0f2f6;
@@ -580,11 +632,11 @@ def nautilus_en_marcha_2():
                             font-size: 16px;
                             font-weight: bold;
                             color: #333;'>
-                        📌 <span style='color:#6c63ff;'>RUL estimado:</span> {(rul_promedio):.0f} días para superar el health index permitido.
+                        📌 <span style='color:#6c63ff;'>RUL estimado - día {len(health_index):.0f}:</span> Aproximadamente {(rul_promedio):.0f} días para superar el Health Index permitido.
                     </div>"""
-                    st.session_state["contenedor_rul_mensaje"].markdown(
-                        st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
-                    )
+                    # st.session_state["contenedor_rul_mensaje"].markdown(
+                    #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                    # )
                 else:
                     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                         background-color:#f0f2f6;
@@ -594,20 +646,15 @@ def nautilus_en_marcha_2():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado: Umbral superado </span> Revisión urgente, se ha superado el health index límite.
+                        📌 <span style='color:#6c63ff;'>Adevertencia:</span> El límite del Health Index se sobrepasó hace {abs((rul_promedio)):.0f} días.
                     </div>"""
-                    st.session_state["contenedor_rul_mensaje"].markdown(
-                        st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
-                    )
+                    
+                    # st.session_state["contenedor_rul_mensaje"].markdown(
+                    #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                    # )
             # Validar que haya datos antes de graficar
             else: 
-                if st.session_state["remaining_useful_life"][subsistema_sel]:
-                    # Si la lista NO está vacía, se repite el último valor
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(633
-                    )
-                else:
-                    # Si está vacía, se agrega None como valor inicial
-                    st.session_state["remaining_useful_life"][subsistema_sel].append(633)
+                st.session_state["remaining_useful_life"][subsistema_sel].append(None)
 
                 st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                         background-color:#f0f2f6;
@@ -617,55 +664,127 @@ def nautilus_en_marcha_2():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado:</span> No se ha estimado alguna intersección con el umbral de salud.
+                    📌 <span style='color:#6c63ff;'>RUL estimado - día {len(health_index):.0f}:</span> No se ha estimado algún comportamiento que indique superar el umbral del Health Index.
                 </div>"""
-                st.session_state["contenedor_rul_mensaje"].markdown(
-                    st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
-                    )
+                # st.session_state["contenedor_rul_mensaje"].markdown(
+                #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                #     )
             rul_list_plot = st.session_state["remaining_useful_life"].get(subsistema_sel, [])
+
             if rul_list_plot:
-                fig_rul_plot, ax_rul_plot = plt.subplots(figsize=(10, 5))
+                dias = list(range(32, 30 + len(rul_list_plot)))  # ej. si hay 10 datos → [31, ..., 40]
+                fig_rul_plot = go.Figure()
 
-                dias = list(range(1, len(rul_list_plot) + 1))
+                fig_rul_plot.add_trace(go.Scatter(
+                    x=dias,
+                    y=rul_list_plot,
+                    mode='lines+markers',
+                    marker=dict(size=8, color='#007acc'),
+                    name=f'📉 RUL: {rul_list_plot[-1]:.0f} Días' if rul_list_plot[-1] is not None else '📉 RUL no estimado',
+                    hovertemplate='Día %{x}<br>RUL %{y:.0f} días<extra></extra>'
+                ))
 
-                # Estética mejorada
-                ax_rul_plot.plot(
-                    dias, rul_list_plot,
-                    marker='o',
-                    linestyle='-',
-                    linewidth=2,
-                    markersize=6,
-                    color='#007acc',
-                    label=f'📉 RUL: {rul_list_plot[-1]:.0f} Días'
-                )
 
-                # Estética general
-                ax_rul_plot.set_title(
-                    f"🔧 Remaining Useful Life - {subsistema_sel}",
-                    fontsize=14, fontweight='bold', color=color_letra
-                )
-                ax_rul_plot.set_xlabel("Día", fontsize=12)
-                ax_rul_plot.set_ylabel("RUL estimado (Días)", fontsize=12)
-                ax_rul_plot.tick_params(axis='both', labelsize=10)
-                ax_rul_plot.grid(True, linestyle='--', alpha=0.4)
-
-                # Umbral opcional
+                # Opcional: línea de umbral (comentado si no la usas)
                 # umbral_rul = 50
-                # ax_rul_plot.axhline(umbral_rul, color='red', linestyle='--', linewidth=1.5, label=f'Umbral ({umbral_rul})')
+                # fig_rul_plot.add_hline(y=umbral_rul, line_dash="dash", line_color="red", annotation_text=f"Umbral {umbral_rul}")
 
-                ax_rul_plot.legend(fontsize=10, loc='upper right', frameon=False)
+                fig_rul_plot.update_layout(
+                    title=f"🔧 Remaining Useful Life - {subsistema_sel}",
+                    xaxis_title="Día",
+                    yaxis_title="RUL estimado (Días)",
+                    yaxis=dict(autorange=True),
+                    xaxis=dict(
+                        tickmode='linear',
+                        tick0=32,
+                        dtick=1,
+                        range=[32, 5+ len(health_index)],
+                    ),
+                    template="simple_white",
+                    font=dict(size=12, color=color_letra),
+                    height=400,
+                    legend=dict(font=dict(size=10), x=0.01, y=0.99),
+                    margin=dict(l=40, r=20, t=50, b=40),
+                )
 
-                # Quitar borde del gráfico
-                for spine in ['top', 'right']:
-                    ax_rul_plot.spines[spine].set_visible(False)
 
-                # Mostrar en contenedor y guardar en session_state
-                st.session_state["contenedor_rul_plot"].pyplot(fig_rul_plot)
+                st.session_state["contenedor_rul_plot"].plotly_chart(fig_rul_plot, use_container_width=True)
                 st.session_state["ultima_fig_rul_plot"] = fig_rul_plot
+
             else:
                 st.session_state["contenedor_rul_plot"].warning("No hay datos de RUL para graficar.")
 
+            # Supongamos que estás dentro de un bucle sobre las variables seleccionadas
+            # 🧩 Resumen general del día (antes del resumen por variable)
+            dia_actual = len(health_index)
+            hi_day = mae_day  # Asegúrate de que está definido
+            subsistema = subsistema_sel  # Asegúrate de que está definido
 
+            hi_formateado_general = f"{hi_day:.2f}" if hi_day is not None else "---"
+
+            resumen_general_html = f"""
+            <div style='
+                background-color:#f0f2f6;
+                padding: 10px 15px;
+                border-left: 5px solid #6c63ff;
+                border-radius: 6px;
+                font-size: 16px;
+                color: #333;
+                margin-bottom: 8px;'>
+                📅 <span style='font-weight:bold; color:#6c63ff;'>Día</span>: <span style='font-weight:bold;'>{dia_actual}</span> |
+                ⚙️ <span style='font-weight:bold;'>{subsistema}</span> |
+                📈 <span style='font-weight:bold; color:#6c63ff;'>Health Index</span>: <span style='font-weight:bold;'>{hi_formateado_general}</span>
+            </div>
+            """
+
+
+            # 🧪 Resumen por variable
+            resumen_general_html  # Inicializa con el resumen general
+            resumen_html_var= f""
+            for var in var_sel:
+                info = resultado.get(var, {})
+                hi_var = dic_mae_day.get(var, None)
+                nombre = info.get("Nombre", var)
+                hi_formateado = f"{hi_var:.2f}" if hi_var is not None else "---"
+
+                resumen_html_var += f"""
+                <div style='
+                    background-color:#f0f2f6;
+                    padding: 10px 15px;
+                    border-left: 5px solid #6c63ff;
+                    border-radius: 6px;
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #333;
+                    margin-bottom: 8px;'>
+                    🧪 <span style='color:#6c63ff;'>Variable:</span> {nombre} &nbsp;|&nbsp;
+                    ❤️ <span style='color:#6c63ff;'>Health Index:</span> {hi_formateado}
+                </div>
+                """
+
+
+            # Al final del bucle o luego de construir todo el resumen
+            # st.session_state["contenedor_rul_mensaje"].markdown(
+            #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+            #     )
+
+
+            st.session_state["ultimo_rul_resumen"] = resumen_general_html
+            st.session_state["contenedor_rul_resumen"].markdown(
+                st.session_state["ultimo_rul_resumen"], unsafe_allow_html=True
+            )
+
+
+
+            st.session_state["ultimo_rul_resumen_var"] = resumen_html_var
+            st.session_state["contenedor_rul_resumen_var"].markdown(
+                st.session_state["ultimo_rul_resumen_var"], unsafe_allow_html=True
+            )
+
+
+            st.session_state["contenedor_rul_mensaje"].markdown(
+                st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
+                )
         detener_placeholder.empty()
         st.session_state["escaneo_activo"] = False
 
