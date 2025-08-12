@@ -151,9 +151,9 @@ def nautilus_en_marcha_2():
         st.stop()
 
     st.sidebar.subheader("⚙️ Simulación")
-    modelo = st.sidebar.selectbox(
+    modelo= st.sidebar.selectbox(
         "🟦 Tipo de datos a visualizar",
-        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías"]
+        ["🟢 Datos sin anomalías", "🔴 Datos con anomalías", "🔵 Datos mixtos"]
     )
 
     tipo_datos=modelo
@@ -162,7 +162,7 @@ def nautilus_en_marcha_2():
     elif "🔴 Datos con anomalías" in modelo:
         df = df_2
     else:
-        df = df_3
+        df = df_1
 
     if df is None or not isinstance(df, pd.DataFrame):
         st.warning(f"No se encontraron datos para {modelo}.")
@@ -175,12 +175,7 @@ def nautilus_en_marcha_2():
 
 
     # === 2. Umbrales específicos por subsistema ===
-    umbrales = {
-        "Sistema de Refrigeración": 0.25,
-        "Sistema de Combustible": 0.36,
-        "Sistema de Lubricación": 0.5,
-        "Temperatura de Gases de Escape": 0.4
-    }
+    umbrales = st.session_state["umbrales_subsistemas"] 
     umbral = float(umbrales[subsistema_sel])
     if not variables_disponibles:
         st.warning("No hay variables válidas para este subsistema.")
@@ -285,14 +280,7 @@ def nautilus_en_marcha_2():
 
 
     # Lista de subsistemas con modelo asociado
-    subsistemas_modelados = {
-        "Sistema de Combustible": "combustible",
-        "Temperatura de Gases de Escape": "gases",
-        "Sistema de Lubricación": "lubricante",
-        "Sistema de Refrigeración": "refrigeracion"
-        
-    }
-
+    subsistemas_modelados = st.session_state["modelosxsubsistemas"]
     
 
     print("Subsistema seleccionado por el usuario:", subsistema_sel)
@@ -365,8 +353,13 @@ def nautilus_en_marcha_2():
         for dia in range(iteraciones):  # días de operación
             # Crear un diccionario con los vectores reshaped para cada variable
             vectores = {}
-
-            muestra_df = df[var_sel].sample(n=time_steps, random_state=None).reset_index(drop=True)
+            if tipo_datos == "🔵 Datos mixtos":
+                if random.random() < 0.5:  # 50% de probabilidad
+                    muestra_df = df_1[var_sel].sample(n=time_steps, random_state=None).reset_index(drop=True)
+                else:
+                    muestra_df = df_2[var_sel].sample(n=time_steps, random_state=None).reset_index(drop=True)
+            else:  
+                muestra_df = df[var_sel].sample(n=time_steps, random_state=None).reset_index(drop=True)
 
             vectores = {}
             for var in variables_disponibles:
@@ -458,7 +451,7 @@ def nautilus_en_marcha_2():
 
                     ax.legend(loc='upper right')
                 fig_sim.suptitle(
-                    f"🔧 Subsistema: {subsistema_sel} | Día {len(health_index)+1}",
+                    f"🔧 {subsistema_sel} | Día {len(health_index)+1}",
                     fontweight="bold",
                     y=1.4 # ⬆️ súbelo un poco (default es ~0.95)
                 )
@@ -600,7 +593,9 @@ def nautilus_en_marcha_2():
                 xaxis_title="Día",
                 yaxis_title="Health Index",
                 height=600,
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                xaxis=dict(showgrid=True, gridwidth=1),
+                yaxis=dict(showgrid=True, gridwidth=1)
             )
 
             # Mostrar en Streamlit
@@ -624,6 +619,7 @@ def nautilus_en_marcha_2():
                 rul_promedio= intercepción_hi- len(health_index)
                 st.session_state["remaining_useful_life"][subsistema_sel].append(rul_promedio)
                 if intercepción_hi>( len(health_index) + 1):
+                    color_sm="orange"
                     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                             background-color:#f0f2f6;
                             padding: 10px 15px;
@@ -632,12 +628,14 @@ def nautilus_en_marcha_2():
                             font-size: 16px;
                             font-weight: bold;
                             color: #333;'>
-                        📌 <span style='color:#6c63ff;'>RUL estimado - día {len(health_index):.0f}:</span> Aproximadamente {(rul_promedio):.0f} días para superar el Health Index permitido.
+                         <span style='color:{color_sm};'>RUL estimado - día {len(health_index):.0f}:</span> Aproximadamente {(rul_promedio):.0f} días para superar el Health Index permitido.
                     </div>"""
                     # st.session_state["contenedor_rul_mensaje"].markdown(
                     #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
                     # )
+                    corazon="🧡"
                 else:
+                    color_sm="red"
                     st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                         background-color:#f0f2f6;
                         padding: 10px 15px;
@@ -646,16 +644,17 @@ def nautilus_en_marcha_2():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                        📌 <span style='color:#6c63ff;'>Adevertencia:</span> El límite del Health Index se sobrepasó hace {abs((rul_promedio)):.0f} días.
+                         <span style='color:{color_sm};'> ¡Advertencia! ⚠️ :</span> La tendencia de comportamientos anómalos sobrepasó el Health Index permitido, se debió tomar acción hace {abs((rul_promedio)):.0f} días.
                     </div>"""
                     
+                    corazon="⚠️"
                     # st.session_state["contenedor_rul_mensaje"].markdown(
                     #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
                     # )
             # Validar que haya datos antes de graficar
             else: 
                 st.session_state["remaining_useful_life"][subsistema_sel].append(None)
-
+                color_sm="seagreen"
                 st.session_state["ultimo_rul_mensaje"] = f"""<div style='
                         background-color:#f0f2f6;
                         padding: 10px 15px;
@@ -664,15 +663,16 @@ def nautilus_en_marcha_2():
                         font-size: 16px;
                         font-weight: bold;
                         color: #333;'>
-                    📌 <span style='color:#6c63ff;'>RUL estimado - día {len(health_index):.0f}:</span> No se ha estimado algún comportamiento que indique superar el umbral del Health Index.
+                     <span style='color:seagreen;'>RUL estimado - día {len(health_index):.0f}:</span> No se ha estimado algún comportamiento que indique superar el umbral del Health Index.
                 </div>"""
                 # st.session_state["contenedor_rul_mensaje"].markdown(
                 #     st.session_state["ultimo_rul_mensaje"], unsafe_allow_html=True
                 #     )
+                corazon="💚"
             rul_list_plot = st.session_state["remaining_useful_life"].get(subsistema_sel, [])
 
             if rul_list_plot:
-                dias = list(range(32, 30 + len(rul_list_plot)))  # ej. si hay 10 datos → [31, ..., 40]
+                dias = list(range(32, 32 + len(rul_list_plot)))  # ej. si hay 10 datos → [31, ..., 40]
                 fig_rul_plot = go.Figure()
 
                 fig_rul_plot.add_trace(go.Scatter(
@@ -681,8 +681,11 @@ def nautilus_en_marcha_2():
                     mode='lines+markers',
                     marker=dict(size=8, color='#007acc'),
                     name=f'📉 RUL: {rul_list_plot[-1]:.0f} Días' if rul_list_plot[-1] is not None else '📉 RUL no estimado',
-                    hovertemplate='Día %{x}<br>RUL %{y:.0f} días<extra></extra>'
+                    hovertemplate='Día %{x}<br>RUL %{y:.0f} días<extra></extra>',
                 ))
+                fig_rul_plot.update_xaxes(showgrid=True, gridwidth=1)
+                fig_rul_plot.update_yaxes(showgrid=True, gridwidth=1)
+
 
 
                 # Opcional: línea de umbral (comentado si no la usas)
@@ -731,9 +734,9 @@ def nautilus_en_marcha_2():
                 font-size: 16px;
                 color: #333;
                 margin-bottom: 8px;'>
-                📅 <span style='font-weight:bold; color:#6c63ff;'>Día</span>: <span style='font-weight:bold;'>{dia_actual}</span> |
+                📅 <span style='font-weight:bold; color:{color_sm};'>Día</span>: <span style='font-weight:bold;'>{dia_actual}</span> |
                 ⚙️ <span style='font-weight:bold;'>{subsistema}</span> |
-                📈 <span style='font-weight:bold; color:#6c63ff;'>Health Index</span>: <span style='font-weight:bold;'>{hi_formateado_general}</span>
+                 <span style='font-weight:bold; color:{color_sm};'>{corazon}Health Index</span>: <span style='font-weight:bold;'>{hi_formateado_general}</span>
             </div>
             """
 
@@ -757,8 +760,8 @@ def nautilus_en_marcha_2():
                     font-weight: bold;
                     color: #333;
                     margin-bottom: 8px;'>
-                    🧪 <span style='color:#6c63ff;'>Variable:</span> {nombre} &nbsp;|&nbsp;
-                    ❤️ <span style='color:#6c63ff;'>Health Index:</span> {hi_formateado}
+                    📈 <span style='color:{color_sm};'>Variable:</span> {nombre} &nbsp;|&nbsp;
+                     <span style='color:{color_sm};'>Health Index:</span> {hi_formateado}
                 </div>
                 """
 

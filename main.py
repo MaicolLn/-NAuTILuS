@@ -38,6 +38,14 @@ with open("subsistemas.json", "r", encoding="utf-8") as f:
     subsistemas = json.load(f)
     st.session_state["subsistemas"] = subsistemas  # ✅ Esto evita el error
 
+with open("umbrales_subsistemas.json", "r", encoding="utf-8") as f:
+    umbrales_subsistemas= json.load(f)
+    st.session_state["umbrales_subsistemas"] = umbrales_subsistemas # ✅ Esto evita el error
+
+with open("modelosxsubsistemas.json", "r", encoding="utf-8") as f:
+    modelosxsubsistemas= json.load(f)
+    st.session_state["modelosxsubsistemas"] = modelosxsubsistemas # ✅ Esto evita el error
+    
 # Cargar umbrales
 with open("umbrales.json", "r", encoding="utf-8") as f:
     umbrales = json.load(f)
