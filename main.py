@@ -78,7 +78,10 @@ for nombre_subsistema, variables in subsistemas.items():
 
 for nombre_subsistema, variables in subsistemas.items():
     if nombre_subsistema not in st.session_state["health_index"]:
-        alet = list(np.random.uniform(0.01, 0.2, len_alet))
+        max_valor = st.session_state["umbrales_subsistemas"].get(nombre_subsistema, 0.2)
+
+
+        alet = list(np.random.uniform(max_valor*0.1, max_valor*0.8, len_alet))
         divisor = len(variables) if len(variables) > 0 else 1  # Evita división por cero
         alet_dividido = [x / divisor for x in alet]
         st.session_state["health_index"][nombre_subsistema] = alet
