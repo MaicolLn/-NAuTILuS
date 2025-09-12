@@ -18,9 +18,7 @@ import math
 from utils.graficas import *
 from Secciones.Gen_data import *
 from Secciones.visualización import *
-from Secciones.nautilus import nautilus_en_marcha
-from Secciones.prueba import nautilus_en_marcha_2
-from Secciones.Panel import PanelC
+from Secciones.RUL import nautilus_en_marcha
 from Secciones.deteccion_anom import detec_A
 # -----------------------------------------------------
 # CONFIGURACIÓN GENERAL
@@ -81,7 +79,7 @@ for nombre_subsistema, variables in subsistemas.items():
         max_valor = st.session_state["umbrales_subsistemas"].get(nombre_subsistema, 0.2)
 
 
-        alet = list(np.random.uniform(max_valor*0.1, max_valor*0.8, len_alet))
+        alet = list(np.random.uniform(max_valor*0.4, max_valor*0.8, len_alet))
         divisor = len(variables) if len(variables) > 0 else 1  # Evita división por cero
         alet_dividido = [x / divisor for x in alet]
         st.session_state["health_index"][nombre_subsistema] = alet
@@ -97,6 +95,8 @@ for nombre_subsistema, variables in subsistemas.items():
         if var not in st.session_state["health_index_variables"][nombre_subsistema]:
             st.session_state["health_index_variables"][nombre_subsistema][var] =  alet_dividido
 
+if "tema" not in st.session_state:
+    st.session_state["tema"] = "Light"  # valor por defecto
 
 
 # -----------------------------------------------------
@@ -148,9 +148,9 @@ elif seccion == "📉Detección de anomalías":
     detec_A()
 
 
-elif seccion == "🚀Health index & RUL_p":
+# elif seccion == "🚀Health index & RUL_p":
 
-    nautilus_en_marcha()
+#     nautilus_en_marcha()
 
 
 # -----------------------------------------------------
@@ -167,7 +167,7 @@ elif seccion == "🚀Health index & RUL_p":
 #     PanelC()
 
 elif seccion == "🚀Health index & RUL":
-    nautilus_en_marcha_2()
+    nautilus_en_marcha()
 #     import numpy as np
 #     # 1. Inicializa la lista si no existe
 #     if "health_index" not in st.session_state:

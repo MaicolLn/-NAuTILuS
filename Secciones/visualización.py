@@ -74,8 +74,8 @@ def visualizar_subsistemas():
         st.markdown(" **Visualización de datos**")
 
         mostrar_datos_reales = st.checkbox("🟣 Datos originales", value=True)
-        mostrar_modelo_1 = st.checkbox("🟢 Datos normales - VAE", value=True)
-        mostrar_modelo_2 = st.checkbox("🔴 Datos con anomalías - VAE", value=False)
+        mostrar_modelo_1 = st.checkbox("🟢 Datos normales - TVAE", value=True)
+        mostrar_modelo_2 = st.checkbox("🔴 Datos con anomalías - TVAE", value=False)
         if False:
             mostrar_modelo_3 = st.checkbox("🔵 Datos de prueba", value=False)
 

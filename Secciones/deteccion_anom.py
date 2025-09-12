@@ -69,13 +69,6 @@ def detec_A():
 
     # === 2. Umbrales específicos por subsistema ===
     # === 2. Umbrales específicos por subsistema ===
-    umbrales = {
-        "Sistema de Refrigeración": 0.4,
-        "Sistema de Combustible": 0.36,
-        "Sistema de Lubricación": 0.5,
-        "Temperatura de Gases de Escape": 0.4
-    }
-    umbral = float(umbrales[subsistema_sel])
     if not variables_disponibles:
         st.warning("No hay variables válidas para este subsistema.")
         st.stop()

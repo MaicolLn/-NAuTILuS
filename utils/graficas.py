@@ -13,12 +13,12 @@ def graficar_modelos_comparados(
     df_2=None,
     df_3=None,  # Nuevo parámetro
     seleccionadas=None,
-    titulo="Generación sintética de datos con VAE",
+    titulo="Generación sintética de datos con TVAE",
     color_1="green",
     color_2="red",
     color_3="blue",  # Nuevo color
-    etiqueta_1="Datos normales - VAE",
-    etiqueta_2="Datos con anomalías - VAE",
+    etiqueta_1="Datos normales - TVAE",
+    etiqueta_2="Datos con anomalías - TVAE",
     etiqueta_3="Datos de prueba",  # Nueva etiqueta
     color_real="purple",
     etiqueta_real="Datos orginales",
@@ -32,9 +32,9 @@ def graficar_modelos_comparados(
     import streamlit as st
 
     # Tema dinámico según Streamlit
-    tema = st.get_option("theme.base")
-    fondo = "#FFFFFF" if tema == "light" else "#1E1E1E"
-    color_letra = "#070707" if tema == "light" else "white"
+    tema= st.session_state["tema"]
+    fondo = "#FFFFFFFF" if tema == "Light" else "#B2ACAC00"
+    color_letra = "#000000FF" if tema == "Light" else "white"
     color_grid = "#DDDDDD" if tema == "light" else "#44444400"
 
     # Estilo visual
@@ -51,14 +51,14 @@ def graficar_modelos_comparados(
         "grid.color": color_grid,
         "grid.linestyle": "--",
         "grid.linewidth": 0.8,
-        "lines.linewidth": 2.5,
+        "lines.linewidth": 2,
         
         # ✅ Tamaño de fuente general
         "font.size": 16,  # Fuente base
         "axes.titlesize": 20,  # Título del eje
-        "axes.labelsize": 20,  # Etiquetas de ejes
-        "xtick.labelsize": 18,  # Ticks del eje x
-        "ytick.labelsize": 18,  # Ticks del eje y
+        "axes.labelsize": 13,  # Etiquetas de ejes
+        "xtick.labelsize": 13,  # Ticks del eje x
+        "ytick.labelsize": 13,  # Ticks del eje y
         "legend.fontsize": 16,  # Leyenda
         "figure.titlesize": 24,  # Título general
     })
@@ -122,6 +122,8 @@ def graficar_modelos_comparados(
 
         ax.tick_params(axis='both', labelsize=9, colors=color_letra)
         ax.grid(True, alpha=0.4)
+        ax.set_xlabel("Muestra")
+        ax.set_ylabel("Valor")        
 
         # Límites Y
         if limites and var in limites:
@@ -131,11 +133,11 @@ def graficar_modelos_comparados(
         # Líneas de referencia
         if info.get("Valor mínimo") is not None:
             vmin = info["Valor mínimo"] / factor_escala
-            ax.axhline(vmin, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
+            ax.axhline(vmin, color='orange', linestyle='--', linewidth=2, alpha=1,
                        label=f'Mínimo ({info["Valor mínimo"]:.0f})')
         if info.get("Valor nominal") is not None:
             vnom = info["Valor nominal"] / factor_escala
-            ax.axhline(vnom, color='yellow', linestyle='--', linewidth=1.2, alpha=0.7,
+            ax.axhline(vnom, color='yellow', linestyle='--', linewidth=2, alpha=1,
                        label=f'Nominal ({info["Valor nominal"]:.0f})')
         # if info.get("Valor máximo") is not None:
         #     vmax = info["Valor máximo"] / factor_escala

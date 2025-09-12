@@ -10,10 +10,10 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
     st.write(f"🔍 Detección de Anomalías - {subsistema_sel}")
 
     # Tema Streamlit
-    tema = st.get_option("theme.base")
-    fondo = "#FFFFFF" if tema == "light" else "#1E1E1E"
-    color_letra = "#070707" if tema == "light" else "white"
-    color_grid = "#DDDDDD" if tema == "light" else "#44444400"
+    tema= st.session_state["tema"]
+    fondo = "#FFFFFF" if tema == "Light" else "#1E1E1E"
+    color_letra = "#070707" if tema == "Light" else "white"
+    color_grid = "#DDDDDD" if tema == "Light" else "#44444400"
         # === 2. Umbrales específicos por subsistema ===
     umbrales = {
         "Sistema de Refrigeración": 0.4,
@@ -38,12 +38,12 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
         "grid.color": color_grid,
         "grid.linestyle": "--",
         "grid.linewidth": 0.8,
-        "lines.linewidth": 2.5,
+        "lines.linewidth": 2,
         "font.size": 16,
         "axes.titlesize": 12,
-        "axes.labelsize": 20,
-        "xtick.labelsize": 18,
-        "ytick.labelsize": 18,
+        "axes.labelsize": 13,
+        "xtick.labelsize": 13,
+        "ytick.labelsize": 13,
         "legend.fontsize": 16,
         "figure.titlesize": 24,
     })
@@ -108,10 +108,12 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
         # === Gráfica 1: Señal real ===
         ax_real = axs[i, 0]
         ax_real.set_facecolor(fondo)
-        ax_real.plot(valores_1, color="blue", linestyle="-", alpha=0.8, label="Real")
+        ax_real.plot(valores_1, color="blue", linestyle="-", alpha=0.8, label="Señal")
         ax_real.set_title(f"{nombre}", fontweight="bold", color=color_letra)
         ax_real.tick_params(axis='both', labelsize=9, colors=color_letra)
         ax_real.grid(True, alpha=0.4)
+        ax_real.set_xlabel("Muestra")
+        ax_real.set_ylabel("Valor")        
 
         # Aplicar límites del eje Y si existen
         if limites and var in limites:
@@ -125,7 +127,7 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
             if info.get("Valor mínimo") is not None:
                 vmin = info["Valor mínimo"] / factor_escala
                 indices_fuera_limite.extend(np.where(valores_1 < vmin)[0])
-                ax_real.axhline(vmin, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
+                ax_real.axhline(vmin, color='orange', linestyle='--', linewidth=2, alpha=1,
                                 label=f'Mínimo ({info["Valor mínimo"]:.0f})')
 
             # if info.get("Valor máximo") is not None:
@@ -137,7 +139,7 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
             if info.get("Valor nominal") is not None:
                 vnom = info["Valor nominal"] / factor_escala
                 indices_fuera_limite.extend(np.where(valores_1 > vnom)[0])
-                ax_real.axhline(vnom, color='yellow', linestyle='--', linewidth=1.2, alpha=0.7,
+                ax_real.axhline(vnom, color='yellow', linestyle='--', linewidth=2, alpha=1,
                                 label=f'Nominal ({info["Valor nominal"]:.0f})')
 
             indices_fuera_limite = np.unique(indices_fuera_limite).astype(int)
@@ -180,6 +182,7 @@ def anomalias(df, modelo, scaler, variables_disponibles, resultado, subsistema_s
         ax_err.tick_params(axis='both', labelsize=9, colors=color_letra)
         ax_err.grid(True, alpha=0.4)
         ax_err.legend(loc='upper right')
+        ax_err.set_xlabel("Muestra")
 
 
     plt.tight_layout()
