@@ -1,0 +1,5 @@
+modelos/
+venv/
+venv311/
+# Archivos de compilación
+__pycache__/

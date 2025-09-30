@@ -1,0 +1,155 @@
+import math
+import streamlit as st
+import joblib
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+
+def graficar_modelos_comparados(
+    resultado,
+    df_1=None,
+    df_2=None,
+    df_3=None,  # Nuevo parámetro
+    seleccionadas=None,
+    titulo="Generación sintética de datos con TVAE",
+    color_1="green",
+    color_2="red",
+    color_3="blue",  # Nuevo color
+    etiqueta_1="Datos normales - TVAE",
+    etiqueta_2="Datos con anomalías - TVAE",
+    etiqueta_3="Datos de prueba",  # Nueva etiqueta
+    color_real="purple",
+    etiqueta_real="Datos orginales",
+    mostrar_reales=True,
+    factor_escala=1,
+    limites=None
+):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    import math
+    import streamlit as st
+
+    # Tema dinámico según Streamlit
+    tema= st.session_state["tema"]
+    fondo = "#FFFFFFFF" if tema == "Light" else "#B2ACAC00"
+    color_letra = "#000000FF" if tema == "Light" else "white"
+    color_grid = "#DDDDDD" if tema == "light" else "#44444400"
+
+    # Estilo visual
+    plt.rcParams.update({
+        "axes.facecolor": fondo,
+        "figure.facecolor": fondo,
+        "axes.labelcolor": color_letra,
+        "xtick.color": color_letra,
+        "ytick.color": color_letra,
+        "text.color": color_letra,
+        "axes.edgecolor": color_letra,
+        "savefig.facecolor": fondo,
+        "legend.labelcolor": color_letra,
+        "grid.color": color_grid,
+        "grid.linestyle": "--",
+        "grid.linewidth": 0.8,
+        "lines.linewidth": 2,
+        
+        # ✅ Tamaño de fuente general
+        "font.size": 16,  # Fuente base
+        "axes.titlesize": 20,  # Título del eje
+        "axes.labelsize": 13,  # Etiquetas de ejes
+        "xtick.labelsize": 13,  # Ticks del eje x
+        "ytick.labelsize": 13,  # Ticks del eje y
+        "legend.fontsize": 16,  # Leyenda
+        "figure.titlesize": 24,  # Título general
+    })
+
+    plt.style.use("seaborn-v0_8-whitegrid")
+    sns.set_palette("colorblind")
+
+    # Validar variables
+    variables = seleccionadas or list(
+        set(
+            df_1.columns if df_1 is not None else []
+        ).union(
+            df_2.columns if df_2 is not None else [],
+            df_3.columns if df_3 is not None else []
+        )
+    )
+    variables = [v for v in variables if v in resultado]
+    n_vars = len(variables)
+
+    if n_vars == 0:
+        st.warning("No hay variables válidas para graficar.")
+        return
+
+    n_cols = 1
+    n_rows = math.ceil(n_vars / n_cols)
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(14, 4 * n_rows), sharex=False)
+    fig.patch.set_facecolor(fondo)
+
+    axs = axs.flatten()
+
+    for i, var in enumerate(variables):
+        ax = axs[i]
+        info = resultado.get(var, {})
+        nombre = info.get("Nombre", var)
+
+        # Datos por grupo
+        valores_1 = df_1[var].sample(n=76).values / factor_escala if df_1 is not None and var in df_1.columns else None
+        valores_2 = df_2[var].sample(n=76).values / factor_escala if df_2 is not None and var in df_2.columns else None
+        valores_3 = df_3[var].sample(n=76).values / factor_escala if df_3 is not None and var in df_3.columns else None
+
+        valores_real = None
+        if mostrar_reales:
+            mediciones = info.get("Mediciones", None)
+            if mediciones and isinstance(mediciones, list) and len(mediciones) >= 1:
+                valores_real = mediciones[:76]
+                valores_real = [v / factor_escala for v in valores_real]
+
+        # Plot
+        ax.set_facecolor(fondo)
+
+        if valores_real is not None:
+            ax.plot(valores_real, color=color_real, linestyle="-", alpha=0.8, label=etiqueta_real)
+        if valores_1 is not None:
+            ax.plot(valores_1, color=color_1, linestyle="-", alpha=0.8, label=etiqueta_1)
+        if valores_2 is not None:
+            ax.plot(valores_2, color=color_2, linestyle="-", alpha=0.8, label=etiqueta_2)
+        if valores_3 is not None:
+            ax.plot(valores_3, color=color_3, linestyle="-", alpha=0.8, label=etiqueta_3)
+
+        ax.set_title(nombre, fontweight="bold", color=color_letra)
+
+        ax.tick_params(axis='both', labelsize=9, colors=color_letra)
+        ax.grid(True, alpha=0.4)
+        ax.set_xlabel("Muestra")
+        ax.set_ylabel("Valor")        
+
+        # Límites Y
+        if limites and var in limites:
+            ymin, ymax = limites[var]
+            ax.set_ylim(ymin, ymax)
+
+        # Líneas de referencia
+        if info.get("Valor mínimo") is not None:
+            vmin = info["Valor mínimo"] / factor_escala
+            ax.axhline(vmin, color='orange', linestyle='--', linewidth=2, alpha=1,
+                       label=f'Mínimo ({info["Valor mínimo"]:.0f})')
+        if info.get("Valor nominal") is not None:
+            vnom = info["Valor nominal"] / factor_escala
+            ax.axhline(vnom, color='yellow', linestyle='--', linewidth=2, alpha=1,
+                       label=f'Nominal ({info["Valor nominal"]:.0f})')
+        # if info.get("Valor máximo") is not None:
+        #     vmax = info["Valor máximo"] / factor_escala
+        #     ax.axhline(vmax, color='orange', linestyle='--', linewidth=1.2, alpha=0.7,
+        #                label=f'Máximo ({info["Valor máximo"]:.0f})')
+
+        ax.legend( loc='upper right')
+
+    # Eliminar ejes vacíos
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+
+    plt.suptitle(titulo, fontweight='bold', color=color_letra)
+    plt.tight_layout(rect=[0, 0, 1, 0.96])
+    st.pyplot(fig)

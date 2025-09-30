@@ -1,0 +1,30 @@
+{
+  "Sistema de Refrigeración": [
+    "PT401",
+    "TE401",
+    "PT471",
+    "TE600 - Carga",
+    "TE600 - Aire entrada al turbo"
+  ],
+  "Sistema de Combustible": [
+    "PT101",
+    "TE101"
+  ],
+  "Sistema de Lubricación": [
+    "RPM",
+    "TE201",
+    "TE202",
+    "TE272",
+    "PDT243",
+    "PT271",
+    "XX001",
+    "XX002",
+    "XX012"
+  ],
+  "Temperatura de Gases de Escape": [
+    "RPM",
+    "TE511",
+    "TE517",
+    "TE5011A"
+  ]
+}
